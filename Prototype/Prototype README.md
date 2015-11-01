@@ -4,10 +4,10 @@ Create a prototype for the Safari main combat gameplay.
 
 ##Goals of Prototype:
 
-*Work out necessary data structures
-*Discover pitfalls or challenges of structure
-*Get an idea down on "paper" from which to brainstorm and progress
-*Provide a concrete starting point that is a solid project to work on
+* Work out necessary data structures
+* Discover pitfalls or challenges of structure
+* Get an idea down on "paper" from which to brainstorm and progress
+* Provide a concrete starting point that is a solid project to work on
 
 ##Steps to accomplish
 *...and estimated time to completion*
@@ -43,10 +43,12 @@ Immutable class. Represents the full hex-grid gamespace. Distance from one space
 
 #####`size`
 `INTEGER` **Read-only** The amount of spaces represented in the grid.
+
 ------------------------------------------------------
 
 #####`dimensions`
 `ARRAY:INTEGER` **Read-only** The dimensions of the grid spaces as an array of two integers: `[x, y]` where `x` is the amount of horizontal spaces in a row and `y` is the amount of rows.
+
 ------------------------------------------------------
 
 ####Methods
@@ -60,6 +62,7 @@ dimX      | Integer | Number of hex spaces per row
 dimY      | Integer | Number of rows of hex spaces
 
 *Returns* `HexGrid` object
+
 ==========================================
 
 #####`spaceAt(x, y)`
@@ -71,3 +74,77 @@ x         | Integer | x Coordinate
 y         | Integer | y Coordinate
 
 *Returns* `HexSpace` object
+
+==========================================
+
+####`distance(hexSpace1, hexSpace2)`
+Get the distance in units between 2 spaces
+
+Arguments | Type    | Notes
+----------|---------|---------
+hexSpace1 | HexSpace| A hex grid space
+hexSpace2 | HexSpace| A hex grid space
+
+*Returns* `INTEGER` of distance between 2 spaces
+
+==========================================
+
+###`HexGrid.HexSpace`
+
+Partially mutable class. Coordinates cannot be changed, but other attributes such as occupants or potentially terrain features / cover may be.
+
+####Properties
+
+#####`location`
+`ARRAY:INTEGER` **Read-Only** The location of the object as an array of coordinates: [x, y]
+
+------------------------------------
+
+#####`maxOccupancy`
+`INTEGER` **Read-Only** The maximum number of occupants that can fit in the `HexSpace`. Calculated based on terrain, and so may change if terrain changes.
+
+####Methods
+
+#####`getOccupant()`
+Getter. Returns the occupant of the space if any
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+*Returns* `Combatant` object if the space is occupied, `false` if it is unoccupied
+
+==========================================
+
+#####`occupy(combatant)`
+Setter. Occupies the `HexSpace` with a `Combatant`, and also vacates the previous `HexSpace` of the combatant
+
+Arguments | Type    | Notes
+----------|---------|---------
+combatant | Combatant| A combatant moving into the hex space
+
+*Returns* `BOOLEAN` Successful?
+
+==========================================
+
+#####`terrain([newTerrainFeature1, newTerrainFeature2, ...])`
+Getter and Setter. Either returns a list of terrain features or adds the specified terrain features in the argument array.
+
+Arguments | Type    | Notes
+----------|---------|---------
+newTerrainFeature#... | TerrainFeature | A registered terrain feature
+
+*Returns* If setting terrain features, returns the `HexSpace` object for chaining. If getting, returns an `ARRAY:Terrain` of the terrain features on this `HexSpace`
+
+#####`terrainEffects()`
+Calculates any modifiers to a combatant's stats as a result of occupying the terrain.
+
+*Returns* `BOOLEAN` Successful?
+
+==========================================
+
+##Constants
+
+###HexGrid.Terrain
+The terrain object contains terrain features and their attributes. The features themselves are immutable, but they can be overwritten with whole new features that us the same name but display different properties. (This is to avoid accidental overwriting of a feature, but to allow flexibility). This object also includes a helper method `createFeature()` which allows you to register new terrain features on-the-fly if needed. There will be a few standard features like rocks, trees, foxholes, and bushes.
+
+####Must return to this part of the API to finish
