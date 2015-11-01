@@ -1,0 +1,12 @@
+Jungle Fever Smorgussboard
+
+Combat will require:
+
+-Character objects w/ stats and abilities
+-Real-Time combat mechanics? I like the idea of set it up and see what happens.
+-Want to give high-level tactical control, but only *before* combat begins
+-Set up event structure that trigger combatant behaviour. For instance, if a player wants their tank to wait in the bushes until the enemies get far enough in to an ambush, need to create a way for players to specify that and for the characters to react accordingly.
+-Displays for ally and enemy health
+-Gear to augment character stats. Gear should be interchangeable among characters, though some characters would get extra bonuses with certain gear.
+-Characters should have default behaviors (AI) which allows them to break away from their orders. For instance, if a sniper has an enemy come up close, he should know to put down the gun and engage hand-to-hand
+-Terrain objects w/ effects (blocking line of effect, cover, etc)
