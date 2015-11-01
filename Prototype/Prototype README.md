@@ -77,7 +77,7 @@ y         | Integer | y Coordinate
 
 ==========================================
 
-####`distance(hexSpace1, hexSpace2)`
+#####`distance(hexSpace1, hexSpace2)`
 Get the distance in units between 2 spaces
 
 Arguments | Type    | Notes
@@ -131,20 +131,25 @@ Getter and Setter. Either returns a list of terrain features or adds the specifi
 
 Arguments | Type    | Notes
 ----------|---------|---------
-newTerrainFeature#... | TerrainFeature | A registered terrain feature
+newTerrainFeature#... | TerrainFeature | **Optional** A registered terrain feature
 
 *Returns* If setting terrain features, returns the `HexSpace` object for chaining. If getting, returns an `ARRAY:Terrain` of the terrain features on this `HexSpace`
+
+==========================================
 
 #####`terrainEffects()`
 Calculates any modifiers to a combatant's stats as a result of occupying the terrain.
 
-*Returns* `BOOLEAN` Successful?
+Arguments | Type    | Notes
+----------|---------|---------
+
+*Returns* Object **STRUCTURE OF OBJECT TBD** which enumerates the bonuses to each combatant stat
 
 ==========================================
 
 ##Constants
 
-###HexGrid.Terrain
+###`HexGrid.Terrain`
 The terrain object contains terrain features and their attributes. The features themselves are immutable, but they can be overwritten with whole new features that us the same name but display different properties. (This is to avoid accidental overwriting of a feature, but to allow flexibility). This object also includes a helper method `createFeature()` which allows you to register new terrain features on-the-fly if needed. There will be a few standard features like rocks, trees, foxholes, and bushes.
 
 ####Must return to this part of the API to finish
