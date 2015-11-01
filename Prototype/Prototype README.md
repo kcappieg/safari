@@ -1,6 +1,6 @@
-#JF Prototype
+#Safari Prototype
 
-Create a prototype for the JF main combat gameplay.
+Create a prototype for the Safari main combat gameplay.
 
 ##Goals of Prototype:
 
