@@ -37,4 +37,37 @@ Create a prototype for the JF main combat gameplay.
 
 ###`HexGrid`
 
-Immutable class. Represents the full hex-grid gamespace. Distance from one space to another is defined
+Immutable class. Represents the full hex-grid gamespace. Distance from one space to another is defined in the same way D+D4E defines it: spaces (squares). Depends on the `HexSpace` class defined below.
+
+####Properties
+
+#####`size`
+`INTEGER` **Read-only** The amount of spaces represented in the grid.
+------------------------------------------------------
+
+#####`dimensions`
+`ARRAY:INTEGER` **Read-only** The dimensions of the grid spaces as an array of two integers: `[x, y]` where `x` is the amount of horizontal spaces in a row and `y` is the amount of rows.
+------------------------------------------------------
+
+####Methods
+
+#####`initialize(dimX, dimY)`
+Factory method which takes the dimensions of the grid and produces a grid object filled in with the specified grid squares
+
+Arguments | Type    | Notes
+----------|---------|---------
+dimX      | Integer | Number of hex spaces per row
+dimY      | Integer | Number of rows of hex spaces
+
+*Returns* `HexGrid` object
+==========================================
+
+#####`spaceAt(x, y)`
+Getter. Returns the grid space at coordinate (x, y)
+
+Arguments | Type    | Notes
+----------|---------|---------
+x         | Integer | x Coordinate
+y         | Integer | y Coordinate
+
+*Returns* `HexSpace` object
