@@ -162,3 +162,9 @@ $RECYCLE.BIN/
 
 *.sublime-project
 *.sublime-workspace
+
+# =======================
+# Nodejs
+# =======================
+
+node_modules/

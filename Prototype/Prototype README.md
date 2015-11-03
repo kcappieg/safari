@@ -15,22 +15,22 @@ Create a prototype for the Safari main combat gameplay.
 ###Phase 1: Prep
 
 1. Create a server in Nodejs from which to run the game locally - 30min - 1hr
-2. Investigate Pixie.js and its API. Become familiar enough to get started - 30min - 1hr
+2. Investigate Pixi.js and its API. Become familiar enough to get started - 30min - 1hr
 3. Code a Hexagonal gamespace grid. This grid class should implement the API described below - 5 - 10hr
 
 ###Phase 2: Game Characters / Combat Mechanics
 
-4. Find avatar images for use as character standins - 30min
-5. Map out the exact mechanics for proto-combat - 1 - 2hr
-6. From the combat needs, write an API for a character class - 2 - 3hr
-7. Implement the API for the character class, and design 10 test charcters: 5 for each side - 5 - 6hr
+1. Find avatar images for use as character standins - 30min
+2. Map out the exact mechanics for proto-combat - 1 - 2hr
+3. From the combat needs, write an API for a character class - 2 - 3hr
+4. Implement the API for the character class, and design 10 test charcters: 5 for each side - 5 - 6hr
 
 ###Phase 3: Event Loop
 
-8. Map out what actions take place when in the event loop - 1 - 2hr
-9. Implement the event loop - 4 - 8hr
-10. Refine event loop / combat mechanics. Correct to make it engaging / interesting - 4hr
-11. Debug / testing buffer - 10hr
+1. Map out what actions take place when in the event loop - 1 - 2hr
+2. Implement the event loop - 4 - 8hr
+3. Refine event loop / combat mechanics. Correct to make it engaging / interesting - 4hr
+4. Debug / testing buffer - 10hr
 
 
 ##APIs
@@ -86,6 +86,16 @@ hexSpace1 | HexSpace| A hex grid space
 hexSpace2 | HexSpace| A hex grid space
 
 *Returns* `INTEGER` of distance between 2 spaces
+
+==========================================
+
+#####`draw()`
+TBD - I'm waiting until I understand Pixie.js before I implement anything
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+*Returns* TBD
 
 ==========================================
 
@@ -147,9 +157,19 @@ Arguments | Type    | Notes
 
 ==========================================
 
-##Constants
+#####`draw()`
+TBD - I'm waiting until I understand Pixie.js before I implement anything
 
-###`HexGrid.Terrain`
-The terrain object contains terrain features and their attributes. The features themselves are immutable, but they can be overwritten with whole new features that us the same name but display different properties. (This is to avoid accidental overwriting of a feature, but to allow flexibility). This object also includes a helper method `createFeature()` which allows you to register new terrain features on-the-fly if needed. There will be a few standard features like rocks, trees, foxholes, and bushes.
+Arguments | Type    | Notes
+----------|---------|---------
 
-####Must return to this part of the API to finish
+*Returns* TBD
+
+==========================================
+
+###Constants
+
+####`HexGrid.Terrain`
+The terrain object contains terrain features and their attributes. The features themselves are immutable, but they can be overwritten with whole new features that use the same name but display different properties. (This is to avoid accidental overwriting of a feature, but to allow flexibility). This object also includes a helper method `createFeature()` which allows you to register new terrain features on-the-fly if needed. There will be a few standard features like rocks, trees, foxholes, and bushes.
+
+###Must return to this part of the API to finish. Could be part of Phase 2 Item 2: mapping out mechanics of combat
