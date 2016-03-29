@@ -34,6 +34,7 @@ Create a prototype for the Safari main combat gameplay.
 
 
 ##APIs
+These APIs could/should be attached to PIXI global object if they're using pixi in the calls.
 
 ###`HexGrid`
 
@@ -53,13 +54,14 @@ Immutable class. Represents the full hex-grid gamespace. Distance from one space
 
 ####Methods
 
-#####`initialize(dimX, dimY)`
+#####`initialize(dimX, dimY, hexRadius)`
 Factory method which takes the dimensions of the grid and produces a grid object filled in with the specified grid squares
 
 Arguments | Type    | Notes
 ----------|---------|---------
-dimX      | Integer | Number of hex spaces per row
-dimY      | Integer | Number of rows of hex spaces
+dimX      | Integer | Width in pixels
+dimY      | Integer | Height in pixels
+hexSize   | Integer | Radius of each hex grid in pixels
 
 *Returns* `HexGrid` object
 
