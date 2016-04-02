@@ -15,10 +15,21 @@ if (typeof PIXI !== "object"){
     var hexHeight = 2 * Math.cos(30 * (Math.PI / 180)) * radius;
     var xAxis = hexX;
     var yAxis = hexY;
+    var hexCoords = [];
+    var hexGridX = 0;
+    var hexGridY = 0;
+    var canvasX = 0;
+    var canvasY = 0;
+
+  //initialize array
+    for (var i = 0; i < hexX; i++){
+      hexCoords[i] = [];
+    }
 
     if (rotate){
       xAxis = hexY;
       yAxis = hexX;
+      hexGridX = hexX - 1;
     }
 
     var cWidth = (Math.floor(xAxis / 2) * radius * 3) + (xAxis % 2 === 1 ? radius * 2 : 0) + 2*radius;
@@ -40,6 +51,7 @@ if (typeof PIXI !== "object"){
     ctx.beginPath();
     if (rotate){
       ctx.translate(cWidth, 0);
+      canvasX += cWidth;
       ctx.rotate(Math.PI/2);
       ctx.moveTo(0,0);
     }
@@ -50,24 +62,31 @@ if (typeof PIXI !== "object"){
   //create 10px of padding
     if (rotate){
       ctx.translate(radius, radius);
+      canvasX+=radius;
+      canvasY+=radius;
     } else {
       ctx.translate(radius/2, radius/2);
+      canvasX+=radius/2;
+      canvasY+=radius/2;
     }
     ctx.moveTo(0,0);
 
     var hexes = []; //future location for array of Hex objects
-    var lineX = 0;
-    var lineY = hexHeight / 2;
     var xStepCounter;
     var rotate60 = 60 * Math.PI / 180;
     var rotate60Counter = -1 * rotate60;
 
-    ctx.translate(lineX, lineY);
+    ctx.translate(0, hexHeight/2);
+    if (rotate){
+      canvasX += hexHeight/2;
+    } else {
+      canvasY += hexHeight/2;
+    }
     ctx.moveTo(0, 0);
 
     for (var i = 0; i < yAxis+1; i++){
 
-      var noSecondPass = false;
+      var lastRow = false;
       var translateDistance = 0;
       var j = 0;
       xStepCounter = 1;
@@ -76,7 +95,7 @@ if (typeof PIXI !== "object"){
         ctx.moveTo(radius, 0);
         ctx.translate(radius, 0);
         xStepCounter++;
-        noSecondPass = true;
+        lastRow = true; //no second pass
       }
 
     //first pass for this row
@@ -93,17 +112,31 @@ if (typeof PIXI !== "object"){
           case 3:
             ctx.rotate(rotate60);
             translateDistance += radius / 2;
+            if (!lastRow){
+              if (rotate){
+                hexCoords[i][j] = {x: canvasX, y: canvasY+translateDistance - radius};
+              } else {
+                hexCoords[j][i] = {x: canvasX+translateDistance - radius, y: canvasY};
+              }
+            }
             j++;
             break;
           case 4:
             ctx.rotate(rotate60Counter);
             translateDistance += radius;
+            if (!lastRow){
+              if (rotate){
+                hexCoords[i][j] = {x: canvasX - hexHeight /2, y: canvasY+translateDistance - radius/2};
+              } else {
+                hexCoords[j][i] = {x: canvasX+translateDistance - radius/2, y: canvasY + hexHeight /2};
+              }
+            }
             j++
             break;
         }
 
       //ensure that no hanging lines are created when x axis has odd number of hex spaces
-        if (xAxis % 2 !== 1 || !noSecondPass){
+        if (xAxis % 2 !== 1 || !lastRow){
           ctx.lineTo(radius, 0);
           ctx.translate(radius, 0);
         }
@@ -123,10 +156,10 @@ if (typeof PIXI !== "object"){
         ctx.rotate(rotate60Counter);
       }
     //second pass for this row
-      if (noSecondPass && xAxis % 2 === 0){
+      if (lastRow && xAxis % 2 === 0){
         ctx.rotate(rotate60Counter);
         ctx.lineTo(radius, 0);
-      } else if (!noSecondPass){
+      } else if (!lastRow){
       //regroup
         ctx.translate(-1* translateDistance, 0);
         ctx.moveTo(0, 0);
@@ -174,14 +207,21 @@ if (typeof PIXI !== "object"){
         ctx.translate(-1 * translateDistance, 0);
       }
 
-      //lineY += hexHeight;
       ctx.translate(0, hexHeight);
+      if (rotate){
+        canvasX -= hexHeight;
+      } else {
+        canvasY += hexHeight;
+      }
       ctx.moveTo(0, 0);
     }
 
     ctx.stroke();
 
-    return {canvas: canvas};
+    return {
+      canvas: canvas,
+      gridCoordinates: hexCoords
+    };
   }
 
   /**
@@ -206,7 +246,70 @@ if (typeof PIXI !== "object"){
 
     var stage = new PIXI.Container();
     stage.addChild(sprite);
-    stage.gridSprite = sprite;
+
+    Object.defineProperty(stage, "gridSprite", {
+      value: sprite,
+      configurable: false,
+      writable: false
+    });
+
+    Object.defineProperty(stage, "hexRadius", {
+      value: radius,
+      configurable: false,
+      writable: false
+    });
+
+    stage.moveChildTo = function(child, x, y, time){
+      if (x < 0 || x >= gridInfo.gridCoordinates.length || y < 0 || y >= gridInfo.gridCoordinates[0].length){
+        throw new Error ("Grid index out of bounds");
+      }
+      if (child.parent !== stage){
+        throw new Error ("Sprite not child of Stage");
+      }
+
+      if (time && time > 0){
+        var destX = gridInfo.gridCoordinates[x][y].x;
+        var destY = gridInfo.gridCoordinates[x][y].y;
+        var distanceX = destX - child.x;
+        var distanceY = destY - child.y;
+
+      //initialize PIXI's Ticker class which allows you to perform updates on every animation frame
+        var ticker = new PIXI.ticker.Ticker();
+        ticker.add(function(){
+          var timeRatio = this.elapsedMS / time;
+          var moveX = distanceX * timeRatio;
+          var moveY = distanceY * timeRatio;
+          if ((child.x + moveX > destX && moveX > 0) || (child.x + moveX < destX && moveX < 0)) {
+            child.x = destX;
+          } else {
+            child.x += moveX;
+          }
+          if ((child.y + moveY > destY && moveY > 0) || (child.y + moveY < destY && moveY < 0)) {
+            child.y = destY;
+          } else {
+            child.y += moveY;
+          }
+
+          if (child.x === destX && child.y === destY){
+            this.stop();
+          }
+        }, ticker);
+
+        ticker.start();
+
+      } else {
+        child.x = gridInfo.gridCoordinates[x][y].x;
+        child.y = gridInfo.gridCoordinates[x][y].y;
+      }
+
+    }
+
+    stage.coordinatesAt = function(x, y){
+      return {
+        x: gridInfo.gridCoordinates[x][y].x,
+        y: gridInfo.gridCoordinates[x][y].y
+      };
+    }
 
     return stage;
   }

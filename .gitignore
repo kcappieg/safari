@@ -168,3 +168,9 @@ $RECYCLE.BIN/
 # =======================
 
 node_modules/
+
+# =======================
+# Local Files
+# =======================
+
+Prototype/server_log.txt
