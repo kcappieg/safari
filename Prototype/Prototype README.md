@@ -34,70 +34,83 @@ Create a prototype for the Safari main combat gameplay.
 
 
 ##APIs
-These APIs could/should be attached to PIXI global object if they're using pixi in the calls.
 
-###`HexGrid`
+###`PIXI.HexGrid`
 
-Immutable class. Represents the full hex-grid gamespace. Distance from one space to another is defined in the same way D+D4E defines it: spaces (squares). Depends on the `HexSpace` class defined below.
+Class. Extends `PIXI.Container`.
+
+The `HexGrid` class takes a set of dimensions in its constructor and draws out a Hexagonal grid using those dimensions. This class is meant to be used as a container for other sprites, which can occupy grid spaces.
+
+The grid lines are simply a sprite of the PIXI.Sprite class that is always added to the container first, meaning its `index=0`. There's no reason why you can't alter this to suit your needs.
+
+####Constructors
+
+#####`new PIXI.HexGrid(hexX, hexY, radius[, gridColor][, rotate])`
+
+Takes the dimensions of Hex squares, the radius, and optional grid color and whether it should be rotated.
+
+Arguments | Type    | Notes
+----------|---------|---------
+hexX      | `number:Integer` | Width in hex spaces
+hexY      | `number:Integer` | Height in hex spaces
+radius    | `number:Integer` | Radius of each hex space in pixels
+gridColor | `string` | **Optional** `<color>` string as defined by CSS specifications, used as the pen color for stroking the grid lines
+rotate    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
 
 ####Properties
 
-#####`size`
-`INTEGER` **Read-only** The amount of spaces represented in the grid.
+#####`gridSprite`
+`object` **Read-only** The sprite object of the background grid. This property is here in case the sprite needs to be accessed directly.
+
+------------------------------------------------------
+
+#####`hexRadius`
+`number:Integer` **Read-only** The radius of each hex space as initialized in the constructor.
 
 ------------------------------------------------------
 
 #####`dimensions`
-`ARRAY:INTEGER` **Read-only** The dimensions of the grid spaces as an array of two integers: `[x, y]` where `x` is the amount of horizontal spaces in a row and `y` is the amount of rows.
+`object` **Read-only** The dimensions of the grid spaces as an object with two properties: `{x, y}` where `x` is the amount of horizontal spaces in a row and `y` is the amount of rows.
 
 ------------------------------------------------------
 
 ####Methods
 
-#####`initialize(dimX, dimY, hexRadius)`
-Factory method which takes the dimensions of the grid and produces a grid object filled in with the specified grid squares
+#####`moveChildTo(sprite, x, y[, time])`
+Move a child to the grid space specified by the `x` and `y` grid coordinates. **Note:** The `x` and `y` coordinates refer to the hex grid, not the pixel coordinates within the container
 
 Arguments | Type    | Notes
 ----------|---------|---------
-dimX      | Integer | Width in pixels
-dimY      | Integer | Height in pixels
-hexSize   | Integer | Radius of each hex grid in pixels
+sprite    | `object:PIXI.Sprite` | PIXI.Sprite object which is a direct child of the container. If the passed sprite is not a child of the container, this method throws an Error
+x      | `number:Integer` | Hex grid x coordinate
+y      | `number:Integer` | Hex grid y coordinate
+time   | `number:Integer` | **Optional** Time in ms it should take for the sprite to go from its current position to the new position
 
 *Returns* `HexGrid` object
 
 ==========================================
 
-#####`spaceAt(x, y)`
-Getter. Returns the grid space at coordinate (x, y)
+#####`coordinatesAt(x, y)`
+Getter. Returns the pixel coordinates that represent the center of the grid space (x, y)
 
 Arguments | Type    | Notes
 ----------|---------|---------
-x         | Integer | x Coordinate
-y         | Integer | y Coordinate
+x         | `number:Integer` | Hex Grid x Coordinate
+y         | `number:Integer` | Hex Grid y Coordinate
 
-*Returns* `HexSpace` object
+*Returns* `object` with `x` and `y` properties representing the coordinates of the sprite where the center of the indicated grid is located
 
 ==========================================
 
-#####`distance(hexSpace1, hexSpace2)`
-Get the distance in units between 2 spaces
+#####`distanceBetween(hexSpace1, hexSpace2)`
+Get the distance in hex space units between 2 spaces
 
 Arguments | Type    | Notes
 ----------|---------|---------
-hexSpace1 | HexSpace| A hex grid space
-hexSpace2 | HexSpace| A hex grid space
+hexSpace1 | `object`| An object with `x` and `y` properties that indicate a hex space's position on a grid. This object could be a `HexSpace` instance, or simply an object with only those two properties
+hexSpace2 | `object`| **Same as above**
 
-*Returns* `INTEGER` of distance between 2 spaces
-
-==========================================
-
-#####`draw()`
-TBD - I'm waiting until I understand Pixie.js before I implement anything
-
-Arguments | Type    | Notes
-----------|---------|---------
-
-*Returns* TBD
+*Returns* `number:Integer` of distance between 2 spaces in hex space units
 
 ==========================================
 

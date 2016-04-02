@@ -55,9 +55,7 @@ if (typeof PIXI !== "object"){
       ctx.rotate(Math.PI/2);
       ctx.moveTo(0,0);
     }
-    if (gridColor){
-      ctx.strokeStyle = gridColor;
-    }
+    ctx.strokeStyle = gridColor;
 
   //create 10px of padding
     if (rotate){
@@ -234,9 +232,15 @@ if (typeof PIXI !== "object"){
       throw new Error ("Dimensions or radius for hex grid not valid");
     }
 
-    //First, create the PIXI renderer by either using the provided dimensions or calculating based on Hexes and radius
+    var penColor = typeof gridColor === "string" ? gridColor : "#000000";
+    var isRotated = false;
+    if (typeof gridColor === "boolean"){
+      isRotated = gridColor;
+    } else if (typeof rotate === "boolean"){
+      isRotated = rotate;
+    }
 
-    var gridInfo = drawHexGrid(hexX, hexY, radius, gridColor, rotate);
+    var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated);
 
   //Create sprite which we'll add to our stage
     var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
@@ -246,7 +250,7 @@ if (typeof PIXI !== "object"){
 
     var stage = new PIXI.Container();
     stage.addChild(sprite);
-
+    
     Object.defineProperty(stage, "gridSprite", {
       value: sprite,
       configurable: false,
@@ -255,6 +259,24 @@ if (typeof PIXI !== "object"){
 
     Object.defineProperty(stage, "hexRadius", {
       value: radius,
+      configurable: false,
+      writable: false
+    });
+
+    var dim = {};
+    Object.defineProperty(dim, "x", {
+      value: hexX,
+      configurable: false,
+      writable: false
+    });
+    Object.defineProperty(dim, "y", {
+      value: hexY,
+      configurable: false,
+      writable: false
+    });
+
+    Object.defineProperty(stage, "dimensions", {
+      value: dim,
       configurable: false,
       writable: false
     });
@@ -276,7 +298,7 @@ if (typeof PIXI !== "object"){
       //initialize PIXI's Ticker class which allows you to perform updates on every animation frame
         var ticker = new PIXI.ticker.Ticker();
         ticker.add(function(){
-          var timeRatio = this.elapsedMS / time;
+          var timeRatio = Math.abs(this.elapsedMS) / time;
           var moveX = distanceX * timeRatio;
           var moveY = distanceY * timeRatio;
           if ((child.x + moveX > destX && moveX > 0) || (child.x + moveX < destX && moveX < 0)) {
@@ -302,6 +324,7 @@ if (typeof PIXI !== "object"){
         child.y = gridInfo.gridCoordinates[x][y].y;
       }
 
+      return this;
     }
 
     stage.coordinatesAt = function(x, y){
@@ -309,6 +332,19 @@ if (typeof PIXI !== "object"){
         x: gridInfo.gridCoordinates[x][y].x,
         y: gridInfo.gridCoordinates[x][y].y
       };
+    }
+
+    stage.distanceBetween = function(hex1, hex2){
+      var xDist = Math.abs(hex1.x - hex2.x);
+      var yDist = Math.abs(hex1.y - hex2.y);
+      var totalDistance;
+
+      if (isRotated) {
+        totalDistance = yDist + Math.max(0, xDist - 1);
+      } else {
+        totalDistance = xDist + Math.max(0, yDist - 1);
+      }
+      return totalDistance;
     }
 
     return stage;
