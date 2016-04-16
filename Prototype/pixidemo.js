@@ -5,7 +5,8 @@ var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundCol
 document.body.appendChild(renderer.view);
 
 
-var linkTexture = new PIXI.Texture(PIXI.BaseTexture.fromImage("/images/link.jpg"));
+/*v
+ar linkTexture = new PIXI.Texture(PIXI.BaseTexture.fromImage("/images/link.jpg"));
 var lSprite = new PIXI.Sprite(linkTexture);
 stage.addChild(lSprite);
 lSprite.x = 40;
@@ -25,6 +26,7 @@ standingSonic.anchor.x = 0.5;
 standingSonic.anchor.y = 0.5;
 stage.addChild(standingSonic);
 stage.moveChildTo(lSprite, 1, 1).moveChildTo(standingSonic, 1, 2);
+*/
 
 var bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
 var bowmanTextures = [];
@@ -41,19 +43,43 @@ bowmanSprite.height = 50;
 bowmanSprite.anchor.x = .5;
 bowmanSprite.anchor.y = .5;
 
-stage.addChild(bowmanSprite);
-stage.moveChildTo(bowmanSprite, 2, 2);
+stage.addCitizen(bowmanSprite, "bowman", 0, 0);
+
+//stage.addChild(bowmanSprite);
+//stage.moveChildTo(bowmanSprite, 2, 2);
 
 requestAnimationFrame(animate);
 
-var moveDist = 0.5;
+var elapsed = 0;
+var frame = 0;
+var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
+function fireBow(tickerLite, sprite, deregister){
+  elapsed += tickerLite.deltaTime;
+  if (elapsed >= 3){
+    sprite.texture = bowmanTextures[order[frame]];
+    frame++;
+    elapsed = 0;
+    if (frame === order.length){
+      frame = 0;
+      elapsed = 0;
+      deregister();
+    }
+  }
+}
+function fireBowInterrupt(tickerLite, sprite){
+  sprite.texture = bowmanTextures[0];
+  frame = 0;
+  elapsed = 0;
+}
 
-function fireBow (){
+/*function fireBow (){
   var ticker = new PIXI.ticker.Ticker();
   var elapsed = 0;
   var frame = 0;
   var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
   ticker.add(function(){
+    console.log(arguments);
+    console.log(this.deltaTime);
     elapsed += this.deltaTime
     if (elapsed >= 1){
       bowmanSprite.texture = bowmanTextures[order[frame]];
@@ -67,7 +93,7 @@ function fireBow (){
 
   ticker.speed = 0.3;
   ticker.start();
-}
+}*/
 
 function neverStop(){
   var ticker = new PIXI.ticker.Ticker();
@@ -92,15 +118,6 @@ function neverStop(){
 
 function animate() {
   requestAnimationFrame(animate);
-/*
-  lSprite.x += moveDist;
-  lSprite.y += moveDist;
-
-  lSprite.rotation += 0.1;
-*/
-  if (lSprite.x > renderer.width || lSprite.y > renderer.height){
-    moveDist = -1*moveDist;
-  }
 
   renderer.render(stage);
 }

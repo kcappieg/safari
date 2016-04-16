@@ -11,11 +11,12 @@ if (typeof PIXI !== "object"){
 (function(){
 "use strict";
 
-  function drawHexGrid(hexX, hexY, radius, gridColor, rotate){
+//UTILITIES
+  function drawHexGrid(hexX, hexY, radius, gridColor, rotate, HexSpaceClass){
     var hexHeight = 2 * Math.cos(30 * (Math.PI / 180)) * radius;
     var xAxis = hexX;
     var yAxis = hexY;
-    var hexCoords = [];
+    var hexSpaces = [];
     var hexGridX = 0;
     var hexGridY = 0;
     var canvasX = 0;
@@ -23,7 +24,7 @@ if (typeof PIXI !== "object"){
 
   //initialize array
     for (var i = 0; i < hexX; i++){
-      hexCoords[i] = [];
+      hexSpaces[i] = [];
     }
 
     if (rotate){
@@ -69,7 +70,6 @@ if (typeof PIXI !== "object"){
     }
     ctx.moveTo(0,0);
 
-    var hexes = []; //future location for array of Hex objects
     var xStepCounter;
     var rotate60 = 60 * Math.PI / 180;
     var rotate60Counter = -1 * rotate60;
@@ -112,9 +112,9 @@ if (typeof PIXI !== "object"){
             translateDistance += radius / 2;
             if (!lastRow){
               if (rotate){
-                hexCoords[i][j] = {x: canvasX, y: canvasY+translateDistance - radius};
+                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX, /*y param*/canvasY+translateDistance - radius);
               } else {
-                hexCoords[j][i] = {x: canvasX+translateDistance - radius, y: canvasY};
+                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius, /*y param*/canvasY);
               }
             }
             j++;
@@ -124,9 +124,9 @@ if (typeof PIXI !== "object"){
             translateDistance += radius;
             if (!lastRow){
               if (rotate){
-                hexCoords[i][j] = {x: canvasX - hexHeight /2, y: canvasY+translateDistance - radius/2};
+                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX - hexHeight /2, /*y param*/canvasY+translateDistance - radius/2);
               } else {
-                hexCoords[j][i] = {x: canvasX+translateDistance - radius/2, y: canvasY + hexHeight /2};
+                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2);
               }
             }
             j++
@@ -218,8 +218,168 @@ if (typeof PIXI !== "object"){
 
     return {
       canvas: canvas,
-      gridCoordinates: hexCoords
+      hexSpaces: hexSpaces
     };
+  }
+
+  function shuffle(array){
+    if (!Array.isArray(array)){
+      throw new Error("Can't shuffle an object that is not an array");
+    }
+    for (var i=0, random, temp; i < array.length-1; i++){
+      random = Math.floor(Math.random() * (array.length - i)) + i;
+      temp = array[i];
+      array[i] = array[random];
+      array[random] = temp;
+    }
+    return array;
+  }
+
+//CONSTRUCTORS
+
+/**
+ * Below is an unfinished first pass. Many unresolved needs. Doesn't account for GameCharacter interface.
+ */
+  function HexSpace(x, y){
+    Object.defineProperty(this, "x", {
+      value: x,
+      writable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, "y", {
+      value: y,
+      writable: false,
+      configurable: false
+    });
+
+    var maxOccupancy = 2;
+    Object.defineProperty(this, "maxOccupancy", {
+      configurable: false,
+      get: function(){return maxOccupancy;},
+      set: function(){throw new Error("Cannot set maxOccupancy property");}
+    });
+
+    var occupants = [];
+    this.getOccupants = function(){
+      var o = [];
+      for (var i=0; i<occupants.length; i++){
+        o[i] = occupants[i];
+      }
+      return o;
+    };
+    this.occupy = function(newOccupant){
+      if (newOccupant.constructor !== Citizen){
+        throw new Error("Illegal occupant: must be citizen of the grid");
+      }
+      if (occupants.length >= maxOccupancy){
+        return false;
+      } else {
+        occupants.push(newOccupant);
+        newOccupant.sprite.x = this.x;
+        newOccupant.sprite.y = this.y;
+        return true;
+      }
+    };
+  }
+
+  function Citizen(sprite, name, gridParent){
+    //instance variables
+    var currentHex;
+    var parent = gridParent;
+    var moving = false;
+
+    Object.defineProperty(this, "moving", {
+      configurable: false,
+      get: function(){return moving;}
+    });
+
+  //final variables
+    Object.defineProperty(this, "sprite", {
+      value: sprite,
+      writable: false,
+      configurable: false
+    });
+    Object.defineProperty(this, "name", {
+      value: name,
+      writable: false,
+      configurable: false
+    });
+
+    this.moveToSpace = function(hexSpace, time, animation, endAnimation){
+      if (hexSpace.constructor !== parent.hexSpaceClass){
+        throw new Error("Illegal arguments. HexSpace is not valid");
+      }
+      var that = this;
+
+      if (time && time > 0){
+        var destX = hexSpace.x;
+        var destY = hexSpace.y;
+        var distanceX = destX - that.sprite.x;
+        var distanceY = destY - that.sprite.y;
+        moving = true;
+
+      //initialize PIXI's Ticker class which allows you to perform updates on every animation frame
+        var ticker = new PIXI.ticker.Ticker();
+
+        ticker.add(function(){
+          var timeRatio = Math.abs(this.elapsedMS) / time;
+          var moveX = distanceX * timeRatio;
+          var moveY = distanceY * timeRatio;
+          if ((that.sprite.x + moveX > destX && moveX > 0) || (that.sprite.x + moveX < destX && moveX < 0)) {
+            that.sprite.x = destX;
+          } else {
+            that.sprite.x += moveX;
+          }
+          if ((that.sprite.y + moveY > destY && moveY > 0) || (that.sprite.y + moveY < destY && moveY < 0)) {
+            that.sprite.y = destY;
+          } else {
+            that.sprite.y += moveY;
+          }
+
+          if (that.sprite.x === destX && that.sprite.y === destY){
+            moving = false;
+            hexSpace.occupy(that);
+            
+            if (typeof endAnimation === "function"){
+              this.remove();
+              this.addOnce(function(){
+                endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, that.sprite);
+                this.stop();
+              }, ticker);
+            } else{
+              this.remove();
+            }
+
+          }
+        }, ticker);
+
+        if (typeof animation === "function"){
+          var registerAnimation = function(){
+            animation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, that.sprite, deregisterAnimation);
+          };
+          var deregisterAnimation = function(){
+            ticker.remove(registerAnimation);
+          };
+          ticker.add(registerAnimation);
+        }
+
+        ticker.start();
+        return function(){
+          if (typeof endAnimation === "function"){
+            ticker.remove();
+            ticker.addOnce(function(){
+              endAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, that.sprite);
+              ticker.stop();
+            });
+          } else {
+            ticker.stop();
+          }
+        };
+
+      } else {
+        return hexSpace.occupy(that);
+      }
+    }
   }
 
   /**
@@ -232,6 +392,11 @@ if (typeof PIXI !== "object"){
       throw new Error ("Dimensions or radius for hex grid not valid");
     }
 
+  //instance variables
+    var population = {};
+    var stage = new PIXI.Container();
+    var hexArray, sprite;
+
     var penColor = typeof gridColor === "string" ? gridColor : "#000000";
     var isRotated = false;
     if (typeof gridColor === "boolean"){
@@ -240,17 +405,18 @@ if (typeof PIXI !== "object"){
       isRotated = rotate;
     }
 
-    var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated);
+    var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated, hexSpaceClass);
+    hexArray = gridInfo.hexSpaces;
 
   //Create sprite which we'll add to our stage
     var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
-    var sprite = new PIXI.Sprite(gridTexture);
+    sprite = new PIXI.Sprite(gridTexture);
     sprite.x = 0;
     sprite.y = 0;
 
-    var stage = new PIXI.Container();
     stage.addChild(sprite);
     
+  //Final variables
     Object.defineProperty(stage, "gridSprite", {
       value: sprite,
       configurable: false,
@@ -281,8 +447,15 @@ if (typeof PIXI !== "object"){
       writable: false
     });
 
+    Object.defineProperty(stage, "hexSpaceClass", {
+      value: hexSpaceClass,
+      configurable: false,
+      writable: false
+    });
+
+  //Methods
     stage.moveChildTo = function(child, x, y, time){
-      if (x < 0 || x >= gridInfo.gridCoordinates.length || y < 0 || y >= gridInfo.gridCoordinates[0].length){
+      if (x < 0 || x >= hexArray.length || y < 0 || y >= hexArray[0].length){
         throw new Error ("Grid index out of bounds");
       }
       if (child.parent !== stage){
@@ -290,8 +463,8 @@ if (typeof PIXI !== "object"){
       }
 
       if (time && time > 0){
-        var destX = gridInfo.gridCoordinates[x][y].x;
-        var destY = gridInfo.gridCoordinates[x][y].y;
+        var destX = hexArray[x][y].x;
+        var destY = hexArray[x][y].y;
         var distanceX = destX - child.x;
         var distanceY = destY - child.y;
 
@@ -320,17 +493,17 @@ if (typeof PIXI !== "object"){
         ticker.start();
 
       } else {
-        child.x = gridInfo.gridCoordinates[x][y].x;
-        child.y = gridInfo.gridCoordinates[x][y].y;
+        child.x = hexArray[x][y].x;
+        child.y = hexArray[x][y].y;
       }
 
       return this;
-    }
+    };
 
     stage.coordinatesAt = function(x, y){
       return {
-        x: gridInfo.gridCoordinates[x][y].x,
-        y: gridInfo.gridCoordinates[x][y].y
+        x: hexArray[x][y].x,
+        y: hexArray[x][y].y
       };
     }
 
@@ -345,10 +518,73 @@ if (typeof PIXI !== "object"){
         totalDistance = xDist + Math.max(0, yDist - 1);
       }
       return totalDistance;
+    };
+
+    stage.addCitizen = function(sprite, name, x, y){
+      if (sprite.constructor !== PIXI.Sprite){
+        throw new Error ("New citizen must be of the class PIXI.Sprite");
+      }
+      var x1, y1;
+      if (!x || !y){
+        x1 = 0;
+        y1 = 0;
+      }
+
+      var newCitizen = new Citizen(sprite, name, this);
+      var initialHex = hexArray[x1][y1];
+
+      while(!newCitizen.moveToSpace(initialHex)){
+        if (++x1 < this.dimensions.x){
+          initialHex = hexArray[x1][y1];
+        } else if (++y1 < this.dimensions.y){
+          x1 = 0;
+          initialHex = hexArray[x1][y1];
+        } else {
+          throw new Error ("Full grid is occupied. Can't add child");
+        }
+      }
+      population[name] = newCitizen;
+      this.addChild(newCitizen.sprite);
+
+      return this;
+    };
+    stage.addCitizenFromTexture = function(texture, name, x, y, height, width){
+      var citizen = new PIXI.Sprite(texture);
+      citizen.anchor.x = 0.5;
+      citizen.anchor.y = 0.5;
+      citizen.height = height || hexRadius;
+      citizen.width = width || hexRadius;
+      return this.addCitizen(citizen, name, x, y);      
+    };
+
+    stage.moveCitizenTo = function(citizen, x, y, time, animation, endAnimation){
+      if (x < 0 || x >= hexArray.length || y < 0 || y >= hexArray[0].length){
+        throw new Error ("Grid index out of bounds");
+      }
+      if (!population[citizen]){
+        throw new Error("Citizen not a member of this grid");
+      }
+      if (typeof time !== "number"){
+        throw new Error("Not a valid time");
+      }
+      var c = population[citizen];
+
+      return c.moveToSpace(hexArray[x][y], time, animation, endAnimation);
+    };
+
+    stage.getCitizenSprite = function(name){
+      return population[name].sprite;
     }
 
     return stage;
   }
 
-})()
+  var hexSpaceClass = HexSpace;
+  PIXI.HexGrid.setHexSpaceClass = function(newClass){
+    hexSpaceClass = newClass;
+  };
+  PIXI.HexGrid.resetHexSpaceClass = function(){
+    hexSpaceClass = HexSpace;
+  };
 
+})();

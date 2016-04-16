@@ -114,14 +114,114 @@ hexSpace2 | `object`| **Same as above**
 
 ==========================================
 
+#####`addCitizen(sprite, name, x, y)`
+Add a citizen to the population of the `HexGrid`. The citizen construct is a way to abstract the nitty-gritty of dealing with the position of your sprites. They can be moved, interacted with, and given commands via the HexGrid. They occupy a `HexSpace`, and can be commanded to move etc. *Most of the implementation is TBD*
+
+Arguments | Type    | Notes
+----------|---------|---------
+sprite    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
+name      | `string` | name with which to register the sprite
+x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
+y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
+
+*Returns* `this`
+
+==========================================
+
+#####`addCitizenFromTexture(texture, name, x, y, height, width)`
+Like `addCitizen`, except creates a sprite from a texture
+
+Arguments | Type    | Notes
+----------|---------|---------
+texture   | `type:PIXI.Texture` | Must be a `PIXI.Texture` object
+name      | `string` | name with which to register the sprite
+x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
+y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
+height    | `integer` | **Optional** The height of the sprite, defaults to the hexRadius of the grid
+width     | `integer` | **Optional** The width of the sprite, defaults to the hexRadius of the grid
+
+*Returns* `this`
+
+==========================================
+
+#####`moveCitizenTo(citizen, x, y)`
+*See alternate method signatures*
+
+Moves a citizen to the grid space specified by the provided coordinates.
+
+**Note** This function attempts to occupy a grid space. If it is unsuccessful, the movement will fail entirely.
+
+Arguments | Type    | Notes
+----------|---------|---------
+citizen   | `string` | name of a pre-registered citizen on the grid
+x         | `integer` | The destination `HexSpace` x-coordinate of the citizen
+y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
+
+*Returns* `boolean` whether the occupation / movement was successful
+
+==========================================
+
+#####`moveCitizenTo(citizen, x, y, time, [animation, [endAnimation]])`
+*See alternate method signatures*
+
+Moves a citizen to the grid space specified by the provided coordinates in the time indicated by the passed time value. You can optionally specify an animation function to execute during the movement.
+
+**Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the movement will fail entirely.
+
+**Note** If `time <= 0`, this method behaves as the signature `moveCitizenTo(citizen, x, y)`
+
+Arguments | Type    | Notes
+----------|---------|---------
+citizen   | `string` | name of a pre-registered citizen on the grid
+x         | `integer` | The destination `HexSpace` x-coordinate of the citizen
+y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
+time      | `integer` | Optional The amount of time (in miliseconds) to take to get from the starting position to the end position. Must be >= 0
+animation | `function` | **Optional** Function that will be executed on each animation frame during the movement. Arguments to the function described below.
+endAnimation | `function` | **Optional** If an `animation` function was passed, this function will be executed at the end of the movement. Arguments to the function described below.
+
+######Arguments to `animation()`
+
+* `tickerLite` - `object` with the following properties
+ * `deltaTime` - `number:floating point` as the `deltaTime` property from the `PIXI.Ticker` object
+ * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
+* `sprite` - `type:PIXI.Sprite` object of the citizen being moved
+* `deregisterAnimation` - `function` deregisters the animation function if the animation is complete
+
+######Arguments to `endAnimation()`
+
+* `tickerLite` - `object` with the following properties
+ * `deltaTime` - `number:floating point` as the `deltaTime` property from the `PIXI.Ticker` object
+ * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
+* `sprite` - `type:PIXI.Sprite` object of the citizen being moved
+
+*Returns* `function` Interrupt the movement and stop the citizen exactly where it is. If passed, the `endAnimation` function will be invoked.
+
+==========================================
+
+#####`getCitizenSprite(name)`
+Get the sprite of a citizen previously added to the grid. The Sprite can be updated independently by the client, but certain future commands may override user specifications, for instance position (x and y coordinates).
+
+Arguments | Type    | Notes
+----------|---------|---------
+name      | `string` | name of a citizen previously registered into the grid
+
+*Returns* `type:PIXI.Sprite` The `PIXI.Sprite` object of the citizen.
+
+==========================================
+
 ###`HexGrid.HexSpace`
 
 Partially mutable class. Coordinates cannot be changed, but other attributes such as occupants or potentially terrain features / cover may be.
 
+This is the default grid space class, which can be overridden when initializing a new `HexGrid`.
+
 ####Properties
 
-#####`location`
-`ARRAY:INTEGER` **Read-Only** The location of the object as an array of coordinates: [x, y]
+#####`x`
+`INTEGER` **Read-Only** The x-coordinate of the grid space in relation to the grid (not pixels);
+
+#####`y`
+`INTEGER` **Read-Only** The y-coordinate of the grid space in relation to the grid (not pixels);
 
 ------------------------------------
 
@@ -130,18 +230,18 @@ Partially mutable class. Coordinates cannot be changed, but other attributes suc
 
 ####Methods
 
-#####`getOccupant()`
-Getter. Returns the occupant of the space if any
+#####`getOccupants()`
+Returns the occupant(s) of the space if any
 
 Arguments | Type    | Notes
 ----------|---------|---------
 
-*Returns* `Combatant` object if the space is occupied, `false` if it is unoccupied
+*Returns* `ARRAY:OBJECT` Array of the occupants of the space
 
 ==========================================
 
 #####`occupy(combatant)`
-Setter. Occupies the `HexSpace` with a `Combatant`, and also vacates the previous `HexSpace` of the combatant
+Occupies the `HexSpace` with an occupier, and also vacates the previous `HexSpace` of the occupier, if any
 
 Arguments | Type    | Notes
 ----------|---------|---------
