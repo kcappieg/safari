@@ -166,7 +166,7 @@ y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
 
 Moves a citizen to the grid space specified by the provided coordinates in the time indicated by the passed time value. You can optionally specify an animation function to execute during the movement.
 
-**Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the movement will fail entirely.
+**Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the citizen will...do something else.
 
 **Note** If `time <= 0`, this method behaves as the signature `moveCitizenTo(citizen, x, y)`
 

@@ -1,12 +1,13 @@
 "use strict";
 var stage = new PIXI.HexGrid(26, 21, 30, false);
 //var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0x66ff99});
-var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff});
+var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff, antialias: true});
 document.body.appendChild(renderer.view);
 
+stage.interactive = true;
 
-/*v
-ar linkTexture = new PIXI.Texture(PIXI.BaseTexture.fromImage("/images/link.jpg"));
+
+/*var linkTexture = new PIXI.Texture(PIXI.BaseTexture.fromImage("/images/link.jpg"));
 var lSprite = new PIXI.Sprite(linkTexture);
 stage.addChild(lSprite);
 lSprite.x = 40;
@@ -115,6 +116,15 @@ function neverStop(){
   ticker.start();
   return ticker;
 }
+
+var upperLeft = stage.coordinatesAt(0, 0);
+var g = new PIXI.Graphics();
+stage.addChild(g);
+g.lineStyle(2);
+stage.on("click", function(e){
+  g.moveTo(upperLeft.x, upperLeft.y);
+  g.lineTo(e.data.global.x, e.data.global.y);
+});
 
 function animate() {
   requestAnimationFrame(animate);
