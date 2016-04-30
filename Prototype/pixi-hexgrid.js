@@ -7,11 +7,162 @@ author Kevin C. Gall
 if (typeof PIXI !== "object"){
   throw new Error ("Failed to find PIXI object. Be sure PIXI.js is loaded before this extension");
 }
+var dev = {};
 
 (function(){
 "use strict";
 
 //UTILITIES
+  //below Class is meant to flatten a regular rectangular 2-d grid (where the length of every array is uniform)
+  function Flat2dGrid(array){
+    var flatArray = [];
+    Object.defineProperty(this, "columns", {
+      writable: false,
+      configurable: false,
+      value: array.length,
+      enumerable: true
+    });
+    Object.defineProperty(this, "rows", {
+      writable: false,
+      configurable: false,
+      value: array[0].length,
+      enumerable: true
+    });
+    Object.defineProperty(this, "flattenedArray", {
+      configurable: false,
+      get: function(){
+        var newArray = [];
+        for (var i=0; i<flatArray.length; i++){
+          newArray[i] = flatArray[i];
+        }
+        return newArray;
+      },
+      enumerable: true
+    });
+
+    for (var i=0; i<array.length; i++){
+      for (var j=0; j<array[i].length; j++){
+        var index = i * array[i].length + j;
+        flatArray[index] = array[i][j];
+      }
+    }
+
+    this.getAt = function(x, y){
+      if (x >= this.columns || y >= this.rows || x < 0 || y < 0){
+        throw new Error ("Index out of bounds");
+      }
+      var index = x*this.rows + y;
+      return flatArray[index];
+    }
+  }
+
+  //implementation of the K-d data structure for 2 dimension
+  function KdTree (array){
+    function Node (o){
+      this.item = o;
+      this.less = null;
+      this.more = null;
+    };
+    shuffle(array);
+    var rootNode = new Node(array[0]);
+    for (var i=1; i<array.length; i++){
+      var newNode = new Node(array[i]);
+      var xAxis = true;
+      var currentNode = rootNode;
+      while (currentNode !== null){
+        var gte;
+        var nextNode;
+        if (xAxis){
+          gte = newNode.item.x >= currentNode.item.x;
+        } else {
+          gte = newNode.item.y >= currentNode.item.y;
+        }
+        if (gte){
+          if (currentNode.more === null){
+            currentNode.more = newNode;
+            currentNode = null;
+          } else {
+            currentNode = currentNode.more;
+          }
+        } else {
+          if (currentNode.less === null){
+            currentNode.less = newNode;
+            currentNode = null;
+          } else {
+            currentNode = currentNode.less;
+          }
+        }
+        xAxis = !xAxis;
+      }
+    }
+
+    this.nearestNeighbor = function(x, y){
+      var dist = KdTree.squaredDistanceBetween(x, y, rootNode.item.x, rootNode.item.y);
+      var nearestNode = kdSearch(rootNode, x, y, true, rootNode, dist);
+      return nearestNode.item;
+    };
+  }
+  function kdSearch (node, x, y, vertical, currentBest, bestDist){
+    var bestShot, alternate;
+    var nDist = KdTree.squaredDistanceBetween(x, y, node.item.x, node.item.y);
+    if (nDist < bestDist){
+      currentBest = node;
+      bestDist = nDist;
+    }
+    if (node.less === null && node.more === null){
+      return currentBest;
+    }
+    if (vertical){
+      if (x < node.item.x){
+        bestShot = node.less;
+        alternate = node.more;
+      } else {
+        bestShot = node.more;
+        alternate = node.less;
+      }
+    } else {
+      if (y < node.item.y){
+        bestShot = node.less;
+        alternate = node.more;
+      } else {
+        bestShot = node.more;
+        alternate = node.less;
+      }
+    }
+    if (bestShot !== null){
+      currentBest = kdSearch(bestShot, x, y, !vertical, currentBest, bestDist);
+    }
+    bestDist = KdTree.squaredDistanceBetween(x, y, currentBest.item.x, currentBest.item.y);
+
+    if (alternate !== null){
+      var shouldContinue = vertical ? bestDist > Math.pow(x - node.item.x, 2) : bestDist > Math.pow(y - node.item.y, 2);
+      if (shouldContinue){
+        currentBest = kdSearch(alternate, x, y, !vertical, currentBest, bestDist);
+      }
+    }
+    return currentBest;
+  }
+  KdTree.squaredDistanceBetween = function (x1, y1, x2, y2){
+    return Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
+  }
+  KdTree.pollingDistance = function (ox, oy, dx, dy, pollD){
+    var increments = {};
+    var backX = false, backY = false;
+    var x = dx - ox;
+    var y = dy - oy;
+    if (x < 0) {backX = true;}
+    if (y < 0) {backY = true;}
+    var angle = Math.atan(Math.abs(y/x));
+    increments.x = pollD * Math.cos(angle);
+    increments.y = pollD * Math.sin(angle);
+    increments.x *= backX ? -1 : 1;
+    increments.y *= backY ? -1 : 1;
+
+    return increments;
+  };
+
+  dev.KdTree = KdTree;
+
   function drawHexGrid(hexX, hexY, radius, gridColor, rotate, HexSpaceClass){
     var hexHeight = 2 * Math.cos(30 * (Math.PI / 180)) * radius;
     var xAxis = hexX;
@@ -112,9 +263,9 @@ if (typeof PIXI !== "object"){
             translateDistance += radius / 2;
             if (!lastRow){
               if (rotate){
-                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX, /*y param*/canvasY+translateDistance - radius);
+                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX, /*y param*/canvasY+translateDistance - radius, /*gridX*/i, /*gridY*/j);
               } else {
-                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius, /*y param*/canvasY);
+                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius, /*y param*/canvasY, /*gridX*/j, /*gridY*/i);
               }
             }
             j++;
@@ -124,9 +275,9 @@ if (typeof PIXI !== "object"){
             translateDistance += radius;
             if (!lastRow){
               if (rotate){
-                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX - hexHeight /2, /*y param*/canvasY+translateDistance - radius/2);
+                hexSpaces[i][j] = new HexSpaceClass(/*x param*/canvasX - hexHeight /2, /*y param*/canvasY+translateDistance - radius/2, /*gridX*/i, /*gridY*/j);
               } else {
-                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2);
+                hexSpaces[j][i] = new HexSpaceClass(/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2, /*gridX*/j, /*gridY*/i);
               }
             }
             j++
@@ -240,21 +391,38 @@ if (typeof PIXI !== "object"){
 /**
  * Below is an unfinished first pass. Many unresolved needs. Doesn't account for GameCharacter interface.
  */
-  function HexSpace(x, y){
+  function HexSpace(x, y, gridX, gridY){
+    
     Object.defineProperty(this, "x", {
       value: x,
       writable: false,
-      configurable: false
+      configurable: false,
+      enumerable: true,
     });
     Object.defineProperty(this, "y", {
       value: y,
       writable: false,
-      configurable: false
+      configurable: false,
+      enumerable: true,
+    });
+    
+    Object.defineProperty(this, "gridX", {
+      value: gridX,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(this, "gridY", {
+      value: gridY,
+      writable: false,
+      configurable: false,
+      enumerable: true,
     });
 
     var maxOccupancy = 2;
     Object.defineProperty(this, "maxOccupancy", {
       configurable: false,
+      enumerable: true,
       get: function(){return maxOccupancy;},
       set: function(){throw new Error("Cannot set maxOccupancy property");}
     });
@@ -406,7 +574,7 @@ if (typeof PIXI !== "object"){
     }
 
     var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated, hexSpaceClass);
-    hexArray = gridInfo.hexSpaces;
+    hexArray = new Flat2dGrid(gridInfo.hexSpaces);
 
   //Create sprite which we'll add to our stage
     var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
@@ -453,18 +621,23 @@ if (typeof PIXI !== "object"){
       writable: false
     });
 
+    var kdTree = new KdTree(hexArray.flattenedArray);
+    dev.kd = kdTree;
+
   //Methods
     stage.moveChildTo = function(child, x, y, time){
-      if (x < 0 || x >= hexArray.length || y < 0 || y >= hexArray[0].length){
+      if (x < 0 || x >= hexArray.columns || y < 0 || y >= hexArray.rows){
         throw new Error ("Grid index out of bounds");
       }
       if (child.parent !== stage){
         throw new Error ("Sprite not child of Stage");
       }
+      
+      var destinationHex = hexArray.getAt(x,y);
 
       if (time && time > 0){
-        var destX = hexArray[x][y].x;
-        var destY = hexArray[x][y].y;
+        var destX = destinationHex.x;
+        var destY = destinationHex.y;
         var distanceX = destX - child.x;
         var distanceY = destY - child.y;
 
@@ -493,23 +666,20 @@ if (typeof PIXI !== "object"){
         ticker.start();
 
       } else {
-        child.x = hexArray[x][y].x;
-        child.y = hexArray[x][y].y;
+        child.x = destinationHex.x;
+        child.y = destinationHex.y;
       }
 
       return this;
     };
 
-    stage.coordinatesAt = function(x, y){
-      return {
-        x: hexArray[x][y].x,
-        y: hexArray[x][y].y
-      };
+    stage.hexAt = function(x, y){
+      return hexArray.getAt(x,y);
     }
 
-    stage.distanceBetween = function(hex1, hex2){
-      var xDist = Math.abs(hex1.x - hex2.x);
-      var yDist = Math.abs(hex1.y - hex2.y);
+    stage.distanceBetween = function(x1, y1, x2, y2){
+      var xDist = Math.abs(x1 - x2);
+      var yDist = Math.abs(y1 - y2);
       var totalDistance;
 
       if (isRotated) {
@@ -519,6 +689,34 @@ if (typeof PIXI !== "object"){
       }
       return totalDistance;
     };
+
+    stage.hexesBetween = function(x1, y1, x2, y2){
+      var intersectingHexes = [];
+      var origin = hexArray.getAt(x1, y1);
+      var destination = hexArray.getAt(x2, y2);
+      var lastHex = origin;
+      var currentHex = null;
+      var pollingDistance = radius / 5;
+
+      var pollIncrement = KdTree.pollingDistance(origin.x, origin.y, destination.x, destination.y, pollingDistance);
+      var totalDistance = Math.sqrt(KdTree.squaredDistanceBetween(origin.x, origin.y, destination.x, destination.y));
+      var currentDistance = 0;
+      var currentX = origin.x+pollIncrement.x;
+      var currentY = origin.y+pollIncrement.y;
+      while (currentDistance < totalDistance){
+        currentHex = kdTree.nearestNeighbor(currentX, currentY);
+        if (currentHex !== lastHex){
+          intersectingHexes.push(currentHex);
+          lastHex = currentHex;
+        }
+
+        currentX += pollIncrement.x;
+        currentY += pollIncrement.y;
+        currentDistance += pollingDistance;
+      }
+
+      return intersectingHexes;
+    }
 
     stage.addCitizen = function(sprite, name, x, y){
       if (sprite.constructor !== PIXI.Sprite){
@@ -531,14 +729,14 @@ if (typeof PIXI !== "object"){
       }
 
       var newCitizen = new Citizen(sprite, name, this);
-      var initialHex = hexArray[x1][y1];
+      var initialHex = hexArray.getAt(x1,y1);
 
       while(!newCitizen.moveToSpace(initialHex)){
         if (++x1 < this.dimensions.x){
-          initialHex = hexArray[x1][y1];
+          initialHex = hexArray.getAt(x1,y1);
         } else if (++y1 < this.dimensions.y){
           x1 = 0;
-          initialHex = hexArray[x1][y1];
+          initialHex = hexArray.getAt(x1,y1);
         } else {
           throw new Error ("Full grid is occupied. Can't add child");
         }
@@ -558,7 +756,7 @@ if (typeof PIXI !== "object"){
     };
 
     stage.moveCitizenTo = function(citizen, x, y, time, animation, endAnimation){
-      if (x < 0 || x >= hexArray.length || y < 0 || y >= hexArray[0].length){
+      if (x < 0 || x >= hexArray.columns || y < 0 || y >= hexArray.rows){
         throw new Error ("Grid index out of bounds");
       }
       if (!population[citizen]){
@@ -569,7 +767,7 @@ if (typeof PIXI !== "object"){
       }
       var c = population[citizen];
 
-      return c.moveToSpace(hexArray[x][y], time, animation, endAnimation);
+      return c.moveToSpace(hexArray.getAt(x,y), time, animation, endAnimation);
     };
 
     stage.getCitizenSprite = function(name){
@@ -585,6 +783,28 @@ if (typeof PIXI !== "object"){
   };
   PIXI.HexGrid.resetHexSpaceClass = function(){
     hexSpaceClass = HexSpace;
+  };
+
+  PIXI.HexGrid.Terrain = function(name){
+    if (!terrainRegister[name]){
+      throw new Error("This terrain type has not been registered");
+    }
+
+    this.sprite = PIXI.Sprite(terrainRegister[name].texture);
+    var attributes = {};
+    for (var attr in terrainRegister[name].attributes){
+      attributes[attr] = terrainRegister[name].attributes[attr];
+    }
+    this.attributes = attributes;
+  };
+
+  var terrainRegister = {};
+  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes){
+    terrainRegister[name] = {
+      texture: texture,
+      attributes: attributes
+    };
+    return PIXI.HexGrid.Terrain;
   };
 
 })();

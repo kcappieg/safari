@@ -90,27 +90,46 @@ time   | `number:Integer` | **Optional** Time in ms it should take for the sprit
 
 ==========================================
 
-#####`coordinatesAt(x, y)`
-Getter. Returns the pixel coordinates that represent the center of the grid space (x, y)
+#####`hexAt(x, y)`
+Getter. Returns the HexSpace object at the grid space (x, y)
 
 Arguments | Type    | Notes
 ----------|---------|---------
 x         | `number:Integer` | Hex Grid x Coordinate
 y         | `number:Integer` | Hex Grid y Coordinate
 
-*Returns* `object` with `x` and `y` properties representing the coordinates of the sprite where the center of the indicated grid is located
+*Returns* `object:HexSpace`
 
 ==========================================
 
-#####`distanceBetween(hexSpace1, hexSpace2)`
-Get the distance in hex space units between 2 spaces
+#####`distanceBetween(x1, y1, x2, y2)`
+Get the distance in hex space units between 2 spaces, identified by their grid coordinates
 
 Arguments | Type    | Notes
 ----------|---------|---------
-hexSpace1 | `object`| An object with `x` and `y` properties that indicate a hex space's position on a grid. This object could be a `HexSpace` instance, or simply an object with only those two properties
-hexSpace2 | `object`| **Same as above**
+x1 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
+y1 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
+x2 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
+y2 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
 
 *Returns* `number:Integer` of distance between 2 spaces in hex space units
+
+==========================================
+
+#####`hexesBetween(x1, y1, x2, y2)`
+Returns an array of each hex space between the origin hex and the destination hex excluding the origin and including the destination.
+
+Arguments | Type    | Notes
+----------|---------|---------
+x1 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
+y1 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
+x2 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
+y2 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
+
+*Returns* `ARRAY:HexSpace` array of hex spaces (in order)
+
+#####Implementation Notes
+Uses a 2-dimensional K-D tree behind the scenes and polls each point along the line from the center of the origin to the center of the destination. It adds every hex space the polled points are within to the array
 
 ==========================================
 
@@ -218,9 +237,15 @@ This is the default grid space class, which can be overridden when initializing 
 ####Properties
 
 #####`x`
-`INTEGER` **Read-Only** The x-coordinate of the grid space in relation to the grid (not pixels);
+`INTEGER` **Read-Only** The x-coordinate of the grid space on the stage (in pixels)
 
 #####`y`
+`INTEGER` **Read-Only** The y-coordinate of the grid space on the stage (in pixels)
+
+#####`gridX`
+`INTEGER` **Read-Only** The x-coordinate of the grid space in relation to the grid (not pixels);
+
+#####`gridY`
 `INTEGER` **Read-Only** The y-coordinate of the grid space in relation to the grid (not pixels);
 
 ------------------------------------
@@ -282,9 +307,31 @@ Arguments | Type    | Notes
 
 ==========================================
 
-###Constants
+###`HexGrid.Terrain`
+The `Terrain` class is meant as a way to add different terrain to the spaces of the hex grid. Each `Terrain` object has a base texture from which new sprites are created (as the background for the hex space). It also has an `attributes` object which should be defined on the client side to fit your game's needs.
 
-####`HexGrid.Terrain`
-The terrain object contains terrain features and their attributes. The features themselves are immutable, but they can be overwritten with whole new features that use the same name but display different properties. (This is to avoid accidental overwriting of a feature, but to allow flexibility). This object also includes a helper method `createFeature()` which allows you to register new terrain features on-the-fly if needed. There will be a few standard features like rocks, trees, foxholes, and bushes.
+####Static Methods
 
-###Must return to this part of the API to finish. Could be part of Phase 2 Item 2: mapping out mechanics of combat
+#####`Terrain.registerNewType (name, texture, attributes)`
+Registers a new type of terrain
+
+Arguments | Type    | Notes
+----------|---------|---------
+name      | `string` | The name of the terrain type
+texture   | `type:PIXI.Texture` | The texture from which to create new sprites for this terrain feature
+attributes | `object` | Client-specific object which describes attributes of this terrain feature
+
+*Returns* `PIXI.HexGrid.Terrain` for chaining
+
+==========================================
+
+####Constructors
+
+#####`new PIXI.Hexgrid.Terrain(name)`
+Returns a new instance of a `Terrain` that has been registered already. Throws an error if `name` has not been registered.
+
+Arguments | Type    | Notes
+----------|---------|---------
+name      | `string` | The name of the terrain type
+
+*Returns* `type:PIXI.HexGrid.Terrain` object

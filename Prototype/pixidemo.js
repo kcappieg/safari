@@ -1,5 +1,5 @@
 "use strict";
-var stage = new PIXI.HexGrid(26, 21, 30, false);
+var stage = new PIXI.HexGrid(20, 15, 30, false);
 //var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0x66ff99});
 var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff, antialias: true});
 document.body.appendChild(renderer.view);
@@ -117,13 +117,30 @@ function neverStop(){
   return ticker;
 }
 
-var upperLeft = stage.coordinatesAt(0, 0);
+var upperLeft = stage.hexAt(10, 10);
 var g = new PIXI.Graphics();
 stage.addChild(g);
-g.lineStyle(2);
 stage.on("click", function(e){
-  g.moveTo(upperLeft.x, upperLeft.y);
-  g.lineTo(e.data.global.x, e.data.global.y);
+  try{
+    var destinationHex = dev.kd.nearestNeighbor(e.data.global.x, e.data.global.y);
+
+    g.clear();
+    g.lineStyle(2, 0x000000);
+    g.moveTo(upperLeft.x, upperLeft.y);
+    g.lineTo(destinationHex.x, destinationHex.y);
+
+    var hexes = stage.hexesBetween(upperLeft.gridX, upperLeft.gridY, destinationHex.gridX, destinationHex.gridY);
+    g.lineStyle(2, 0x00FF00);
+
+    hexes.forEach(function(el){
+      g.beginFill(0xFFFFFF, 0.0);
+      g.drawCircle(el.x, el.y, 20);
+      g.endFill();
+    });
+  } catch(e){
+    console.log(e.stack)
+    console.log(e)
+  }
 });
 
 function animate() {

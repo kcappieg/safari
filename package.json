@@ -1,0 +1,29 @@
+{
+  "name": "safari_prototype",
+  "version": "0.0.1",
+  "description": "Browser-based game prototype using pixiejs",
+  "keywords": [
+    "pixiejs",
+    "browser",
+    "canvas",
+    "HTML5"
+  ],
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Kevin C. Gall",
+    "email": "kcg245@gmail.com"
+  },
+  "contributors": [
+    {
+      "name": "Trevor Buteau"
+    }
+  ],
+  "main": "server.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kcappieg/safari.git"
+  },
+  "dependencies": {
+    "mime": "^1.3.4"
+  }
+}
