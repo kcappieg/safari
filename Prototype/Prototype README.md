@@ -228,7 +228,33 @@ name      | `string` | name of a citizen previously registered into the grid
 
 ==========================================
 
-###`HexGrid.HexSpace`
+#####`addTerrain(hexX, hexY, name)`
+Adds a terrain feature specified by `name` to the hex grid space specified by `hexX` and `hexY`
+
+Arguments | Type    | Notes
+----------|---------|---------
+hexX      | `integer` | The `HexSpace` x-coordinate
+hexY      | `integer` | The `HexSpace` y-coordinate
+name      | `string` | name from which to instantiate a registered `Terrain` feature
+
+*Returns* `this`
+
+==========================================
+
+#####`removeTerrain(hexX, hexY, name)`
+Removes a terrain feature specified by `name` from the hex grid space specified by `hexX` and `hexY`
+
+Arguments | Type    | Notes
+----------|---------|---------
+hexX      | `integer` | The `HexSpace` x-coordinate
+hexY      | `integer` | The `HexSpace` y-coordinate
+name      | `string` | name of the `Terrain` feature to remove
+
+*Returns* `this`
+
+==========================================
+
+###`PIXI.HexGrid.HexSpace`
 
 Partially mutable class. Coordinates cannot be changed, but other attributes such as occupants or potentially terrain features / cover may be.
 
@@ -276,39 +302,36 @@ combatant | Combatant| A combatant moving into the hex space
 
 ==========================================
 
-#####`terrain([newTerrainFeature1, newTerrainFeature2, ...])`
-Getter and Setter. Either returns a list of terrain features or adds the specified terrain features in the argument array.
+#####`addTerrain(name)`
+Adds a new terrain feature to the hex space unless that feature already exists in the space.
 
 Arguments | Type    | Notes
 ----------|---------|---------
-newTerrainFeature#... | TerrainFeature | **Optional** A registered terrain feature
+name | `string` | The name of the new terrain feature to be instantiated
 
-*Returns* If setting terrain features, returns the `HexSpace` object for chaining. If getting, returns an `ARRAY:Terrain` of the terrain features on this `HexSpace`
+*Returns* `type:PIXI.HexGrid.Terrain` the new terrain feature added
 
 ==========================================
 
-#####`terrainEffects()`
-Calculates any modifiers to a combatant's stats as a result of occupying the terrain.
+#####`removeTerrain(name)`
+Removes an existing terrain type from a hex space
 
 Arguments | Type    | Notes
 ----------|---------|---------
+name | `string` | The name of the new terrain feature to be removed
 
-*Returns* Object **STRUCTURE OF OBJECT TBD** which enumerates the bonuses to each combatant stat
-
-==========================================
-
-#####`draw()`
-TBD - I'm waiting until I understand Pixie.js before I implement anything
-
-Arguments | Type    | Notes
-----------|---------|---------
-
-*Returns* TBD
+*Returns* `type:PIXI.HexGrid.Terrain` The terrain feature just removed
 
 ==========================================
 
-###`HexGrid.Terrain`
+###`PIXI.HexGrid.Terrain`
 The `Terrain` class is meant as a way to add different terrain to the spaces of the hex grid. Each `Terrain` object has a base texture from which new sprites are created (as the background for the hex space). It also has an `attributes` object which should be defined on the client side to fit your game's needs.
+
+####Properties
+
+* name - `string` The name of the terrain feature
+* sprite - `type:PIXI.Sprite` The unique sprite object of this terrain feature
+* attributes - `object` A unique object copied to this object detailing the terrain feature's attributes
 
 ####Static Methods
 

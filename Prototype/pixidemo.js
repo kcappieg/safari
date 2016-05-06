@@ -6,29 +6,6 @@ document.body.appendChild(renderer.view);
 
 stage.interactive = true;
 
-
-/*var linkTexture = new PIXI.Texture(PIXI.BaseTexture.fromImage("/images/link.jpg"));
-var lSprite = new PIXI.Sprite(linkTexture);
-stage.addChild(lSprite);
-lSprite.x = 40;
-lSprite.y = 40;
-lSprite.height= 25;
-lSprite.width = 25;
-lSprite.anchor.x = 0.5;
-lSprite.anchor.y = 0.5;
-
-var sonic = new PIXI.BaseTexture.fromImage("/images/sonic-sprites.png");
-var sonic1 = new PIXI.Rectangle(0, 0, 90, 120);
-var standingSonicTexture = new PIXI.Texture(sonic, sonic1, sonic1);
-var standingSonic = new PIXI.Sprite(standingSonicTexture);
-standingSonic.height = 32;
-standingSonic.width = 24;
-standingSonic.anchor.x = 0.5;
-standingSonic.anchor.y = 0.5;
-stage.addChild(standingSonic);
-stage.moveChildTo(lSprite, 1, 1).moveChildTo(standingSonic, 1, 2);
-*/
-
 var bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
 var bowmanTextures = [];
 var down = 64*19;
@@ -45,11 +22,6 @@ bowmanSprite.anchor.x = .5;
 bowmanSprite.anchor.y = .5;
 
 stage.addCitizen(bowmanSprite, "bowman", 0, 0);
-
-//stage.addChild(bowmanSprite);
-//stage.moveChildTo(bowmanSprite, 2, 2);
-
-requestAnimationFrame(animate);
 
 var elapsed = 0;
 var frame = 0;
@@ -73,29 +45,6 @@ function fireBowInterrupt(tickerLite, sprite){
   elapsed = 0;
 }
 
-/*function fireBow (){
-  var ticker = new PIXI.ticker.Ticker();
-  var elapsed = 0;
-  var frame = 0;
-  var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
-  ticker.add(function(){
-    console.log(arguments);
-    console.log(this.deltaTime);
-    elapsed += this.deltaTime
-    if (elapsed >= 1){
-      bowmanSprite.texture = bowmanTextures[order[frame]];
-      frame++;
-      elapsed = 0;
-      if (frame === order.length){
-        ticker.stop();
-      }
-    }
-  }, ticker);
-
-  ticker.speed = 0.3;
-  ticker.start();
-}*/
-
 function neverStop(){
   var ticker = new PIXI.ticker.Ticker();
   var elapsed = 0;
@@ -116,6 +65,46 @@ function neverStop(){
   ticker.start();
   return ticker;
 }
+
+//"tree" texture
+
+var c = document.createElement("canvas");
+c.width = 50;
+c.height = 50;
+var ctx = c.getContext("2d");
+ctx.fillStyle = "green";
+
+ctx.beginPath();
+ctx.arc(25, 25, 25, 0, Math.PI*2, false);
+ctx.fill();
+ctx.closePath();
+
+var treeTexture = PIXI.Texture.fromCanvas(c);
+
+ctx.globalCompositeOperation = "destination-out";
+ctx.fillStyle = "rgb(255, 255, 255, 1)";
+ctx.beginPath();
+ctx.arc(25, 25, 10, 0, Math.PI*2, false);
+ctx.fill();
+ctx.closePath();
+
+var brokenTreeTexture = PIXI.Texture.fromCanvas(c);
+
+//Register tree terrain
+PIXI.HexGrid.Terrain.registerNewType("tree", treeTexture, {
+  cover: -5,
+  concealment: -2,
+  fragility: 1
+});
+//Register broken tree terrain
+PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
+  cover: -1,
+  concealment: -2,
+  fragility: 0
+});
+
+stage.addTerrain(6, 13, "tree");
+stage.addTerrain(10, 3, "broken tree");
 
 var upperLeft = stage.hexAt(10, 10);
 var g = new PIXI.Graphics();
@@ -148,3 +137,5 @@ function animate() {
 
   renderer.render(stage);
 }
+
+requestAnimationFrame(animate);

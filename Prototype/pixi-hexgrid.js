@@ -448,6 +448,33 @@ var dev = {};
         return true;
       }
     };
+
+    var terrainFeatures = {};
+    this.addTerrain = function(name){
+      var terrainObject;
+      if (typeof name === "string"){
+        if(!terrainRegister[name]){
+          throw new Error ("Terrain not registered! Can't be added to Hex Space");
+        }
+        terrainObject = new PIXI.HexGrid.Terrain(name);
+      } else if (typeof name === "object" && name.constructor === PIXI.HexGrid.Terrain){
+        terrainObject = name;
+      } else {
+        throw new Error ("Invalid argument passed")
+      }
+
+      if (terrainFeatures[terrainObject.name]){
+        return;
+      }
+      terrainFeatures[terrainObject.name] = terrainObject;
+      return terrainObject;
+    }
+    this.removeTerrain = function(name){
+      if (typeof name !== "string"){throw new Error ("Invalid argument");}
+      var retObject = terrainFeatures[name];
+      delete terrainFeatures[name];
+      return retObject;
+    }
   }
 
   function Citizen(sprite, name, gridParent){
@@ -774,6 +801,30 @@ var dev = {};
       return population[name].sprite;
     }
 
+    stage.addTerrain = function(hx, hy, name){
+      var hex = hexArray.getAt(hx, hy);
+
+      var newTerrain = null;
+      try {
+        newTerrain = hex.addTerrain(name);
+      } catch (e){}
+      if (newTerrain !== null){
+        stage.addChild(newTerrain.sprite);
+        newTerrain.sprite.x = hex.x;
+        newTerrain.sprite.y = hex.y;
+        newTerrain.sprite.alpha = 0.5;
+      }
+      return this;
+    }
+
+    stage.removeTerrain = function(hx, hy, name){
+      var hex = hexArray.getAt(hx, hy);
+
+      var terrain = hex.removeTerrain(name);
+      this.removeChild(terrain.sprite);
+      return this;
+    }
+
     return stage;
   }
 
@@ -790,12 +841,15 @@ var dev = {};
       throw new Error("This terrain type has not been registered");
     }
 
-    this.sprite = PIXI.Sprite(terrainRegister[name].texture);
+    this.sprite = new PIXI.Sprite(terrainRegister[name].texture);
+    this.sprite.anchor.x = 0.5;
+    this.sprite.anchor.y = 0.5;
     var attributes = {};
     for (var attr in terrainRegister[name].attributes){
       attributes[attr] = terrainRegister[name].attributes[attr];
     }
     this.attributes = attributes;
+    this.name = name;
   };
 
   var terrainRegister = {};
