@@ -35,13 +35,31 @@ Create a prototype for the Safari main combat gameplay.
 
 ##APIs
 
+###Known Bugs
+
+* `HexSpace.addTerrain()` and `HexSpace.removeTerrain()`: It's possible to cause a space's max occupancy to go too high if a terrain feature's `maxOccupancy` property would bring the occupancy below 0. The space's max occupancy stays at 0, but if that feature is removed, it would be increased up the full value of the `maxOccupancy` property
+
 ###`PIXI.HexGrid`
 
-Class. Extends `PIXI.Container`.
+####Extends `PIXI.Container`.
 
 The `HexGrid` class takes a set of dimensions in its constructor and draws out a Hexagonal grid using those dimensions. This class is meant to be used as a container for other sprites, which can occupy grid spaces.
 
 The grid lines are simply a sprite of the PIXI.Sprite class that is always added to the container first, meaning its `index=0`. There's no reason why you can't alter this to suit your needs.
+
+####Static Methods
+
+#####`PIXI.HexGrid.setMaxOccupancy(number)`
+
+Sets the default max occupancy that `HexSpaces` will be initialized with when a `HexGrid` is created. If not set, the starting default is 2.
+
+Arguments | Type   | Notes
+--------- | -------|------
+`number`  | `number:Integer` | The maximum number of `Citizen`s that can occupy any `HexSpace` by default in the `HexGrid` when initialized.
+
+######Implementation Notes
+
+`HexSpace`s are initialized with whatever the value of the max occupancy is at the time the `PIXI.HexGrid()` constructor is invoked. Setting this value after a `HexGrid` has been initialized will have no effect on the already-instantiated `HexSpace`s.
 
 ####Constructors
 
@@ -51,11 +69,11 @@ Takes the dimensions of Hex squares, the radius, and optional grid color and whe
 
 Arguments | Type    | Notes
 ----------|---------|---------
-hexX      | `number:Integer` | Width in hex spaces
-hexY      | `number:Integer` | Height in hex spaces
-radius    | `number:Integer` | Radius of each hex space in pixels
-gridColor | `string` | **Optional** `<color>` string as defined by CSS specifications, used as the pen color for stroking the grid lines
-rotate    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
+`hexX`      | `number:Integer` | Width in hex spaces
+`hexY`      | `number:Integer` | Height in hex spaces
+`radius`    | `number:Integer` | Radius of each hex space in pixels
+`gridColor` | `string` | **Optional** `<color>` string as defined by CSS specifications, used as the pen color for stroking the grid lines
+`rotate`    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
 
 ####Properties
 
@@ -76,29 +94,15 @@ rotate    | `boolean` | **Optional** Should the Hex Grid be rotated? This change
 
 ####Methods
 
-#####`moveChildTo(sprite, x, y[, time])`
-Move a child to the grid space specified by the `x` and `y` grid coordinates. **Note:** The `x` and `y` coordinates refer to the hex grid, not the pixel coordinates within the container
+#####`pointAt(gridX, gridY)`
+Returns the point that represents the center of the grid space at (gridX, gridY)
 
 Arguments | Type    | Notes
 ----------|---------|---------
-sprite    | `object:PIXI.Sprite` | PIXI.Sprite object which is a direct child of the container. If the passed sprite is not a child of the container, this method throws an Error
-x      | `number:Integer` | Hex grid x coordinate
-y      | `number:Integer` | Hex grid y coordinate
-time   | `number:Integer` | **Optional** Time in ms it should take for the sprite to go from its current position to the new position
+`gridX`   | `number:Integer` | Hex Grid x Coordinate
+`gridY`   | `number:Integer` | Hex Grid y Coordinate
 
-*Returns* `HexGrid` object
-
-==========================================
-
-#####`hexAt(x, y)`
-Getter. Returns the HexSpace object at the grid space (x, y)
-
-Arguments | Type    | Notes
-----------|---------|---------
-x         | `number:Integer` | Hex Grid x Coordinate
-y         | `number:Integer` | Hex Grid y Coordinate
-
-*Returns* `object:HexSpace`
+*Returns* `type:PIXI.Point`
 
 ==========================================
 
@@ -107,26 +111,30 @@ Get the distance in hex space units between 2 spaces, identified by their grid c
 
 Arguments | Type    | Notes
 ----------|---------|---------
-x1 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
-y1 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
-x2 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
-y2 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
+x1 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
+y1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
+x2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
+y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
 
 *Returns* `number:Integer` of distance between 2 spaces in hex space units
 
 ==========================================
 
 #####`hexesBetween(x1, y1, x2, y2)`
-Returns an array of each hex space between the origin hex and the destination hex excluding the origin and including the destination.
+Returns an array of objects with essential information about each hex space between the origin hex and the destination hex excluding the origin and including the destination.
 
 Arguments | Type    | Notes
 ----------|---------|---------
-x1 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
-y1 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
-x2 | `integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
-y2 | `integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
+x1 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
+y1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
+x2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
+y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
 
-*Returns* `ARRAY:HexSpace` array of hex spaces (in order)
+*Returns* `ARRAY:Object` The objects in the array have these three properties:
+
+* `gridX`: `number:Integer` - Hex Grid x Coordinate 
+* `gridY`: `number:Integer` - Hex Grid y Coordinate
+* `attributes`: `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the `attributes` object assigned to each terrain type found on the grid space. 
 
 #####Implementation Notes
 Uses a 2-dimensional K-D tree behind the scenes and polls each point along the line from the center of the origin to the center of the destination. It adds every hex space the polled points are within to the array
@@ -228,6 +236,33 @@ name      | `string` | name of a citizen previously registered into the grid
 
 ==========================================
 
+#####`getCitizenDirection(name)`
+Get the direction the citizen is facing based on its most recent movement. The return value is an angle in radians. See the *Returns* section below for details
+
+Arguments | Type    | Notes
+----------|---------|---------
+name      | `string` | name of a citizen previously registered into the grid
+
+*Returns* `number:Float` - Angle in radians that describes the direction the citizen moved or is moving. Possible values from [0, 2*pi). A value of 0 means the citizen is facing left on the grid, and it proceeds clockwise:
+
+* Left: 0
+* Down: pi/2
+* Right: pi
+* Up: pi * 3/2
+
+==========================================
+
+#####`isCitizenMoving(name)`
+The boolean of whether the citizen is in the process of moving as a result of a call to the `moveCitizenTo()` method.
+
+Arguments | Type    | Notes
+----------|---------|---------
+name      | `string` | name of a citizen previously registered into the grid
+
+*Returns* `boolean` Is the citizen moving?
+
+==========================================
+
 #####`addTerrain(hexX, hexY, name)`
 Adds a terrain feature specified by `name` to the hex grid space specified by `hexX` and `hexY`
 
@@ -274,7 +309,8 @@ This is the default grid space class, which can be overridden when initializing 
 #####`gridY`
 `INTEGER` **Read-Only** The y-coordinate of the grid space in relation to the grid (not pixels);
 
-------------------------------------
+#####`radius`
+`INTEGER` **Read-Only** The radius of the HexSpace (as initialized);
 
 #####`maxOccupancy`
 `INTEGER` **Read-Only** The maximum number of occupants that can fit in the `HexSpace`. Calculated based on terrain, and so may change if terrain changes.
@@ -321,6 +357,17 @@ Arguments | Type    | Notes
 name | `string` | The name of the new terrain feature to be removed
 
 *Returns* `type:PIXI.HexGrid.Terrain` The terrain feature just removed
+
+==========================================
+
+#####`getTerrainAttributes()`
+
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+
+*Returns* `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the `attributes` object assigned to each terrain type found on the grid space. **Note** This makes a shallow copy of the terrain object stored internally in the HexSpace, but the attributes objects will be the same objects with which the client registered the Terrain type.
 
 ==========================================
 

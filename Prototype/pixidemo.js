@@ -21,7 +21,15 @@ bowmanSprite.height = 50;
 bowmanSprite.anchor.x = .5;
 bowmanSprite.anchor.y = .5;
 
+var bowmanSprite2 = new PIXI.Sprite(bowmanTextures[0]);
+bowmanSprite2.width = 50;
+bowmanSprite2.height = 50;
+bowmanSprite2.anchor.x = .5;
+bowmanSprite2.anchor.y = .5;
+bowmanSprite2.tint = 0x00ff00;
+
 stage.addCitizen(bowmanSprite, "bowman", 0, 0);
+stage.addCitizen(bowmanSprite2, "bowman2", 0, 1);
 
 var elapsed = 0;
 var frame = 0;
@@ -66,7 +74,7 @@ function neverStop(){
   return ticker;
 }
 
-//"tree" texture
+//Terrain Textures
 
 var c = document.createElement("canvas");
 c.width = 50;
@@ -81,6 +89,16 @@ ctx.closePath();
 
 var treeTexture = PIXI.Texture.fromCanvas(c);
 
+c = document.createElement("canvas");
+c.width = 50;
+c.height = 50;
+ctx = c.getContext("2d");
+ctx.fillStyle = "green";
+ctx.beginPath();
+ctx.arc(25, 25, 25, 0, Math.PI*2, false);
+ctx.fill();
+ctx.closePath();
+
 ctx.globalCompositeOperation = "destination-out";
 ctx.fillStyle = "rgb(255, 255, 255, 1)";
 ctx.beginPath();
@@ -94,18 +112,21 @@ var brokenTreeTexture = PIXI.Texture.fromCanvas(c);
 PIXI.HexGrid.Terrain.registerNewType("tree", treeTexture, {
   cover: -5,
   concealment: -2,
-  fragility: 1
+  fragility: 1,
+  maxOccupancy: -1
 });
 //Register broken tree terrain
 PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
   cover: -1,
   concealment: -2,
-  fragility: 0
+  fragility: 0,
+  maxOccupancy: -1
 });
 
 stage.addTerrain(6, 13, "tree");
 stage.addTerrain(10, 3, "broken tree");
 
+/* Former test of nearest neighbor function
 var upperLeft = stage.hexAt(10, 10);
 var g = new PIXI.Graphics();
 stage.addChild(g);
@@ -131,6 +152,7 @@ stage.on("click", function(e){
     console.log(e)
   }
 });
+*/
 
 function animate() {
   requestAnimationFrame(animate);
