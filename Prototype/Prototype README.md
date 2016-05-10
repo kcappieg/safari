@@ -106,6 +106,18 @@ Arguments | Type    | Notes
 
 ==========================================
 
+#####`hex(x, y)`
+Returns the `HexLite` object that contains the point at (x, y)
+
+Arguments | Type    | Notes
+----------|---------|---------
+`x`   | `number:Integer` | x Coordinate
+`y`   | `number:Integer` | y Coordinate
+
+*Returns* `object` As the `HexLite` object returned from the `HexSpace.createHexLite()` method
+
+==========================================
+
 #####`distanceBetween(x1, y1, x2, y2)`
 Get the distance in hex space units between 2 spaces, identified by their grid coordinates
 
@@ -120,17 +132,17 @@ y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid
 
 ==========================================
 
-#####`hexesBetween(x1, y1, x2, y2)`
+#####`hexesBetween(gridX1, gridY1, gridX2, gridY2)`
 Returns an array of objects with essential information about each hex space between the origin hex and the destination hex excluding the origin and including the destination.
 
 Arguments | Type    | Notes
 ----------|---------|---------
-x1 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
-y1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
-x2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
-y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
+gridX1 | `number:Integer`| The starting `HexSpace` x-coordinate of the origin
+gridY1 | `number:Integer`| The starting `HexSpace` y-coordinate of the origin
+gridX2 | `number:Integer`| The `HexSpace` x-coordinate of the destination
+gridY2 | `number:Integer`| The `HexSpace` y-coordinate of the destination
 
-*Returns* `ARRAY:Object` The objects in the array have these three properties:
+*Returns* `ARRAY:Object` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
 
 * `gridX`: `number:Integer` - Hex Grid x Coordinate 
 * `gridY`: `number:Integer` - Hex Grid y Coordinate
@@ -141,21 +153,22 @@ Uses a 2-dimensional K-D tree behind the scenes and polls each point along the l
 
 ==========================================
 
-#####`addCitizen(sprite, name, x, y)`
+#####`addCitizen(sprite, name, x, y, addToStage)`
 Add a citizen to the population of the `HexGrid`. The citizen construct is a way to abstract the nitty-gritty of dealing with the position of your sprites. They can be moved, interacted with, and given commands via the HexGrid. They occupy a `HexSpace`, and can be commanded to move etc. *Most of the implementation is TBD*
 
 Arguments | Type    | Notes
 ----------|---------|---------
-sprite    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
-name      | `string` | name with which to register the sprite
-x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
-y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
+`sprite`    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
+`name`      | `string` | name with which to register the sprite
+`x`         | `integer` | The starting `HexSpace` x-coordinate of the citizen
+`y`         | `integer` | The starting `HexSpace` y-coordinate of the citizen
+`addToStage` | `boolean` | **Optional** Should the citizen be added to the stage? Default `true`
 
 *Returns* `this`
 
 ==========================================
 
-#####`addCitizenFromTexture(texture, name, x, y, height, width)`
+#####`addCitizenFromTexture(texture, name, x, y, height, width, addToStage)`
 Like `addCitizen`, except creates a sprite from a texture
 
 Arguments | Type    | Notes
@@ -166,6 +179,7 @@ x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
 y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
 height    | `integer` | **Optional** The height of the sprite, defaults to the hexRadius of the grid
 width     | `integer` | **Optional** The width of the sprite, defaults to the hexRadius of the grid
+`addToStage` | `boolean` | **Optional** Should the citizen be added to the stage? Default `true`
 
 *Returns* `this`
 
@@ -202,7 +216,7 @@ Arguments | Type    | Notes
 citizen   | `string` | name of a pre-registered citizen on the grid
 x         | `integer` | The destination `HexSpace` x-coordinate of the citizen
 y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
-time      | `integer` | Optional The amount of time (in miliseconds) to take to get from the starting position to the end position. Must be >= 0
+time      | `integer` | Optional The amount of time (in miliseconds) to take to get from the starting position to the end position. Must be > 0
 animation | `function` | **Optional** Function that will be executed on each animation frame during the movement. Arguments to the function described below.
 endAnimation | `function` | **Optional** If an `animation` function was passed, this function will be executed at the end of the movement. Arguments to the function described below.
 
@@ -289,6 +303,19 @@ name      | `string` | name of the `Terrain` feature to remove
 
 ==========================================
 
+#####`applySprites()`
+Empties the grid of all existing children and applies all sprites for citizens, terrains, and superpositions.
+
+Arguments | Type    | Notes
+----------|---------|---------
+hexX      | `integer` | The `HexSpace` x-coordinate
+hexY      | `integer` | The `HexSpace` y-coordinate
+name      | `string` | name of the `Terrain` feature to remove
+
+*Returns* `this`
+
+==========================================
+
 ###`PIXI.HexGrid.HexSpace`
 
 Partially mutable class. Coordinates cannot be changed, but other attributes such as occupants or potentially terrain features / cover may be.
@@ -360,6 +387,17 @@ name | `string` | The name of the new terrain feature to be removed
 
 ==========================================
 
+#####`createHexLite()`
+Creates a copy of the properties of the hex object (with the terrain attributes currently present), but without any of its methods
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+
+*Returns* `object` Object with the properties of `this`, but without any of its methods. Additionally has `attributes` property, which is an object whose properties are terrain attributes for all terrain types on this hex space.
+
+==========================================
+
 #####`getTerrainAttributes()`
 
 
@@ -382,7 +420,7 @@ The `Terrain` class is meant as a way to add different terrain to the spaces of 
 
 ####Static Methods
 
-#####`Terrain.registerNewType (name, texture, attributes)`
+#####`Terrain.registerNewType (name, texture, attributes[, layer])`
 Registers a new type of terrain
 
 Arguments | Type    | Notes
@@ -390,6 +428,7 @@ Arguments | Type    | Notes
 name      | `string` | The name of the terrain type
 texture   | `type:PIXI.Texture` | The texture from which to create new sprites for this terrain feature
 attributes | `object` | Client-specific object which describes attributes of this terrain feature
+layer | `string` | Either `"overlay"` or `"underlay"`, indicating which layer the terrain's sprite should be put on
 
 *Returns* `PIXI.HexGrid.Terrain` for chaining
 

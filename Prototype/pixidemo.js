@@ -114,7 +114,7 @@ PIXI.HexGrid.Terrain.registerNewType("tree", treeTexture, {
   concealment: -2,
   fragility: 1,
   maxOccupancy: -1
-});
+}, "overlay");
 //Register broken tree terrain
 PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
   cover: -1,
@@ -123,8 +123,8 @@ PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
   maxOccupancy: -1
 });
 
-stage.addTerrain(6, 13, "tree");
-stage.addTerrain(10, 3, "broken tree");
+stage.addTerrain(6, 13, "broken tree");
+stage.addTerrain(10, 3, "tree");
 
 /* Former test of nearest neighbor function
 var upperLeft = stage.hexAt(10, 10);

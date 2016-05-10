@@ -654,6 +654,17 @@ var dev = {};
 
       return attr;
     };
+
+    this.createHexLite = function(){
+      return {
+        gridX: this.gridX,
+        gridY: this.gridY,
+        radius: this.radius,
+        x: this.x,
+        y: this.y,
+        attributes: this.getTerrainAttributes()
+      };
+    };
   }
 
   function Citizen(sprite, name, gridParent){
@@ -725,9 +736,18 @@ var dev = {};
 
   //instance variables
     var population = {};
+    //layering arrays
+    var background = [];
+    var underlay = [];
+    var citizenLayer = [];
+    var overlay = [];
+    var superPosition = [];
+    //stage
     var stage = new PIXI.Container();
-    var hexArray, sprite, kdTree, gridInfo;
+    //utility variables
+    var hexArray, kdTree;
 
+  //grid drawing variables
     var penColor = typeof gridColor === "string" ? gridColor : "#000000";
     var isRotated = false;
     if (typeof gridColor === "boolean"){
@@ -736,21 +756,22 @@ var dev = {};
       isRotated = rotate;
     }
 
-    gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated);
+  //initialize grid texture and utility variables from hex data
+    var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated);
     hexArray = new Flat2dGrid(gridInfo.hexSpaces);
     kdTree = new KdTree(hexArray.flattenedArray);
+    var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
 
   //Create sprite which we'll add to our stage
-    var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
-    sprite = new PIXI.Sprite(gridTexture);
-    sprite.x = 0;
-    sprite.y = 0;
+    var gridSprite = new PIXI.Sprite(gridTexture);
+    gridSprite.x = 0;
+    gridSprite.y = 0;
 
-    stage.addChild(sprite);
+    stage.addChild(gridSprite);
     
   //Final variables
     Object.defineProperty(stage, "gridSprite", {
-      value: sprite,
+      value: gridSprite,
       configurable: false,
       writable: false
     });
@@ -780,9 +801,14 @@ var dev = {};
     });
 
   //Methods
-    stage.pointAt = function(x, y){
+    stage.pointAt = function(gridX, gridY){
       var hex = hexArray.getAt(x,y);
       return new PIXI.Point(hex.x, hex.y);
+    }
+
+    stage.hexAt = function(x, y){
+      var hex = kdTree.nearestNeighbor(x, y);
+      return hex.createHexLite();
     }
 
     stage.distanceBetween = function(x1, y1, x2, y2){
@@ -818,9 +844,9 @@ var dev = {};
   //caches the last 10 paths to save on repetitive computation
     var hexPathCache = {};
     var hexPathCacheKeys = [];
-    stage.hexesBetween = function(x1, y1, x2, y2){
+    stage.hexesBetween = function(gridX1, gridY1, gridX2, gridY2){
       //if cached, return the cached value
-      var id = ""+x1+y1+x2+y2;
+      var id = ""+gridX1+gridY1+gridX2+gridY2;
       if (hexPathCache[id]){
         var iH = hexPathCache[id];
         for (var i=0; i<iH.length; i++){
@@ -830,8 +856,8 @@ var dev = {};
       }
 
       var intersectingHexes = [];
-      var origin = hexArray.getAt(x1, y1);
-      var destination = hexArray.getAt(x2, y2);
+      var origin = hexArray.getAt(gridX1, gridY1);
+      var destination = hexArray.getAt(gridX2, gridY2);
       var lastHex = origin;
       var currentHex = null;
       var pollingDistance = radius / 5;
@@ -844,11 +870,7 @@ var dev = {};
       while (currentDistance < totalDistance){
         currentHex = kdTree.nearestNeighbor(currentX, currentY);
         if (currentHex !== lastHex){
-          intersectingHexes.push({
-            gridX: currentHex.gridX,
-            gridY: currentHex.gridY,
-            attributes: currentHex.getTerrainAttributes()
-          });
+          intersectingHexes.push(currentHex.createHexLite());
           if (currentHex === destination){
             break;
           }
@@ -871,7 +893,7 @@ var dev = {};
       return intersectingHexes;
     }
 
-    stage.addCitizen = function(sprite, name, x, y){
+    stage.addCitizen = function(sprite, name, x, y, addToStage){
       if (sprite.constructor !== PIXI.Sprite){
         throw new Error ("New citizen must be of the class PIXI.Sprite");
       }
@@ -880,24 +902,49 @@ var dev = {};
         x1 = 0;
         y1 = 0;
       }
+      if (typeof addToStage !== "boolean"){
+        addToStage = true;
+      }
 
       var newCitizen = new Citizen(sprite, name, this);
       var initialHex = hexArray.getAt(x1,y1);
 
       population[name] = newCitizen;
-      this.addChild(newCitizen.sprite);
+      citizenLayer.push(newCitizen);
+      if (addToStage){
+        var notAdded = true;
+        var index = background.length + underlay.length + citizenLayer.length;
+        while (notAdded){
+          try{
+            this.addChildAt(newCitizen.sprite, index);
+            notAdded = false;
+          } catch(e){index--;}
+        }
+      }
 
       this.moveCitizenTo(name, x, y, 0);
 
       return this;
     };
-    stage.addCitizenFromTexture = function(texture, name, x, y, height, width){
+    stage.addCitizenFromTexture = function(texture, name, x, y, height, width, addToStage){
       var citizen = new PIXI.Sprite(texture);
       citizen.anchor.x = 0.5;
       citizen.anchor.y = 0.5;
       citizen.height = height || hexRadius;
       citizen.width = width || hexRadius;
-      return this.addCitizen(citizen, name, x, y);      
+      return this.addCitizen(citizen, name, x, y, addToStage);      
+    };
+    stage.removeCitizen = function(name){
+      var c = population[name];
+      delete population[name];
+
+      for (var i=0; i<citizenLayer.length; i++){
+        if (citizenLayer[i] === c){
+          citizenLayer.splice(i, 1);
+        }
+        break;
+      }
+      return stage.removeChild(c.sprite);
     };
 
   //Breadth-first search for an unoccupied space to occupy
@@ -944,6 +991,16 @@ var dev = {};
       var hex = hexArray.getAt(x, y);
       var originHex = c.currentHex;
       var moveSpriteObject;
+
+    //if time is 0 or undefined, simply jump to the destination immediately
+      if ((time || 0) === 0) {
+        var success = hex.occupy(c);
+        if (success && originHex){
+          originHex.vacate(c);
+        }
+        return success;
+      }
+
 
     //create wrapper function for the endAnimation argument that occupies the hex grid
       var ea2 = function(tickerLite, sprite){
@@ -992,21 +1049,119 @@ var dev = {};
         newTerrain = hex.addTerrain(name);
       } catch (e){}
       if (newTerrain !== null){
-        stage.addChild(newTerrain.sprite);
+        var index;
+        if (newTerrain.layer === "overlay"){
+          overlay.push(newTerrain);
+          index = background.length + underlay.length + citizenLayer.length + overlay.length;
+        } else if (newTerrain.layer === "underlay"){
+          underlay.push(newTerrain);
+          index = background.length + underlay.length;
+        }
+        
+        var notAdded = true;
+        while (notAdded){
+          try{
+            stage.addChildAt(newTerrain.sprite, index);
+            notAdded = false;
+          } catch (e) {index--;}
+        }
+
         newTerrain.sprite.x = hex.x;
         newTerrain.sprite.y = hex.y;
         newTerrain.sprite.alpha = 0.5;
       }
       return this;
-    }
+    };
 
     stage.removeTerrain = function(hx, hy, name){
       var hex = hexArray.getAt(hx, hy);
-
       var terrain = hex.removeTerrain(name);
+
+      var layerArray;
+      if (terrain.layer === "overlay"){
+        layerArray = overlay;
+      } else if (terrain.layer === "underlay"){
+        layerArray = underlay;
+      }
+
+      for (var i=0; i<layerArray.length; i++){
+        if (layerArray[i] === terrain){
+          layerArray.splice(i, 1);
+          break;
+        }
+      }
+
       this.removeChild(terrain.sprite);
       return this;
-    }
+    };
+
+    stage.addBackground = function(sprite){
+      if (sprite.constructor !== PIXI.Sprite){
+        throw new Error ("Not a valid sprite object");
+      }
+
+      background.push(sprite);
+      stage.addChildAt(sprite, background.length - 1);
+
+      return this;
+    };
+    stage.removeBackground = function(sprite){
+      for (var i=0; i<background.length; i++){
+        if (background[i] === sprite){
+          background.splice(i, 1);
+        }
+        break;
+      }
+
+      return stage.removeChild(sprite);
+    };
+
+    stage.addSuperPosition = function(sprite){
+      if (sprite.constructor !== PIXI.Sprite){
+        throw new Error ("Not a valid sprite object");
+      }
+
+      superPosition.push(sprite);
+      stage.addChild(sprite);
+
+      return this;
+    };
+    stage.removeSuperPosition = function(sprite){
+      for (var i=0; i<superPosition.length; i++){
+        if (superPosition[i] === sprite){
+          superPosition.splice(i, 1);
+        }
+        break;
+      }
+
+      return stage.removeChild(sprite);
+    };
+
+    stage.applySprites = function(){
+      var that = this;
+    //empty stage of all children
+      this.removeChildren();
+
+    //iterate through each array adding sprites in order
+      function addSprites1 (el){
+        that.addChild(el.sprite);
+      }
+      function addSprites2 (el){
+        that.addChild(el);
+      }
+      background.forEach(addSprites2);
+
+    //add stage back
+      this.addChild(this.gridSprite);
+
+    //add the rest of the layers
+      underlay.forEach(addSprites1);
+      citizenLayer.forEach(addSprites1);
+      overlay.forEach(addSprites1);
+      superPosition.forEach(addSprites2);
+
+      return this;
+    };
 
     return stage;
   }
@@ -1033,13 +1188,19 @@ var dev = {};
     }
     this.attributes = attributes;
     this.name = name;
+    this.layer = terrainRegister[name].layer;
   };
 
   var terrainRegister = {};
-  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes){
+  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes, layer){
+    if (layer !== "overlay"){
+      layer = "underlay";
+    }
+
     terrainRegister[name] = {
       texture: texture,
-      attributes: attributes
+      attributes: attributes,
+      layer: layer
     };
     return PIXI.HexGrid.Terrain;
   };
