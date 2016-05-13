@@ -1,5 +1,6 @@
 "use strict";
-var stage = new PIXI.HexGrid(20, 15, 30, false);
+var hexGridManager = PIXI.HexGrid.initializeHexGrid(20, 15, 30, false);
+var stage = hexGridManager.grid;
 //var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0x66ff99});
 var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff, antialias: true});
 document.body.appendChild(renderer.view);
@@ -28,8 +29,8 @@ bowmanSprite2.anchor.x = .5;
 bowmanSprite2.anchor.y = .5;
 bowmanSprite2.tint = 0x00ff00;
 
-stage.addCitizen(bowmanSprite, "bowman", 0, 0);
-stage.addCitizen(bowmanSprite2, "bowman2", 0, 1);
+hexGridManager.addCitizen(bowmanSprite, "bowman", 0, 0);
+hexGridManager.addCitizen(bowmanSprite2, "bowman2", 0, 1);
 
 var elapsed = 0;
 var frame = 0;
@@ -123,8 +124,9 @@ PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
   maxOccupancy: -1
 });
 
-stage.addTerrain(6, 13, "broken tree");
-stage.addTerrain(10, 3, "tree");
+var brokenTree = hexGridManager.addTerrain(6, 13, "broken tree");
+var tree = hexGridManager.addTerrain(10, 3, "tree");
+tree.alpha = 0.5;
 
 /* Former test of nearest neighbor function
 var upperLeft = stage.hexAt(10, 10);

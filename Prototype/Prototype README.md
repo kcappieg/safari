@@ -41,11 +41,13 @@ Create a prototype for the Safari main combat gameplay.
 
 ###`PIXI.HexGrid`
 
-####Extends `PIXI.Container`.
+Namespace for the HexGrid abstraction.
 
-The `HexGrid` class takes a set of dimensions in its constructor and draws out a Hexagonal grid using those dimensions. This class is meant to be used as a container for other sprites, which can occupy grid spaces.
+The `HexGrid` object intializes a hex grid along with all `PIXI.Container` objects needed for its operations. It takes a set of dimensions in its factory initializer and draws out a Hexagonal grid using those dimensions.
 
-The grid lines are simply a sprite of the PIXI.Sprite class that is always added to the container first, meaning its `index=0`. There's no reason why you can't alter this to suit your needs.
+The grid lines are implemented as a `PIXI.Sprite` class dynamically drawn in a `canvas` element to specified dimensions.
+
+All `PIXI.Containers` used in the grid are accessible as properties on the `HexGridManager` controller object so that you can access PIXI's methods
 
 ####Static Methods
 
@@ -57,13 +59,15 @@ Arguments | Type   | Notes
 --------- | -------|------
 `number`  | `number:Integer` | The maximum number of `Citizen`s that can occupy any `HexSpace` by default in the `HexGrid` when initialized.
 
+*Returns* `this`
+
 ######Implementation Notes
 
-`HexSpace`s are initialized with whatever the value of the max occupancy is at the time the `PIXI.HexGrid()` constructor is invoked. Setting this value after a `HexGrid` has been initialized will have no effect on the already-instantiated `HexSpace`s.
+`HexSpace`s are initialized with whatever the value of the max occupancy is at the time the `PIXI.HexGrid.initializeHexGrid()` factory is invoked. Setting this value after a `HexGrid` has been initialized will have no effect on the already-instantiated `HexSpace`s.
 
-####Constructors
+============================================
 
-#####`new PIXI.HexGrid(hexX, hexY, radius[, gridColor][, rotate])`
+#####`PIXI.HexGrid.initializeHexGrid(hexX, hexY, radius[, gridColor][, rotate])`
 
 Takes the dimensions of Hex squares, the radius, and optional grid color and whether it should be rotated.
 
@@ -75,10 +79,38 @@ Arguments | Type    | Notes
 `gridColor` | `string` | **Optional** `<color>` string as defined by CSS specifications, used as the pen color for stroking the grid lines
 `rotate`    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
 
+*Returns* `type:HexGridManager`
+
+==========================================
+
+###`HexGridManager`
+
+This is the main controller class of the HexGrid paradigm. The methods on this class coordinate and organize the different layers and components of the hex grid including "Citizens", or game character objects, and Terrain features.
+
 ####Properties
 
+#####`grid`
+`type:PIXI.Container` **Read-only** The container object, or stage, which contains the entire grid
+
+------------------------------------------------------
+
 #####`gridSprite`
-`object` **Read-only** The sprite object of the background grid. This property is here in case the sprite needs to be accessed directly.
+`type:PIXI.Sprite` **Read-only** The sprite object of the background grid. Added to `grid` first.
+
+------------------------------------------------------
+
+#####`underLayer`
+`type:PIXI.Container` **Read-only** The container object which holds all terrain features registered as `"underlay"`. Added to `grid` second.
+
+------------------------------------------------------
+
+#####`citizenLayer`
+`type:PIXI.Container` **Read-only** The container object which holds all game objects, or citizens. Added to `grid` third.
+
+------------------------------------------------------
+
+#####`overLayer`
+`type:PIXI.Container` **Read-only** The container objectwhich holds all terrain features registered as `"overlay"`. Added to `grid` fourth.
 
 ------------------------------------------------------
 
@@ -153,8 +185,8 @@ Uses a 2-dimensional K-D tree behind the scenes and polls each point along the l
 
 ==========================================
 
-#####`addCitizen(sprite, name, x, y, addToStage)`
-Add a citizen to the population of the `HexGrid`. The citizen construct is a way to abstract the nitty-gritty of dealing with the position of your sprites. They can be moved, interacted with, and given commands via the HexGrid. They occupy a `HexSpace`, and can be commanded to move etc. *Most of the implementation is TBD*
+#####`addCitizen(sprite, name, x, y)`
+Add a citizen to the population of the `HexGrid`. The citizen construct is a way to abstract the nitty-gritty of dealing with the position of your sprites. They can be moved, interacted with, and given commands via the HexGrid. They occupy a `HexSpace`, and can be commanded to move etc. Sprites associated with citizens are automatically added to the `citizenLayer`.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -162,13 +194,12 @@ Arguments | Type    | Notes
 `name`      | `string` | name with which to register the sprite
 `x`         | `integer` | The starting `HexSpace` x-coordinate of the citizen
 `y`         | `integer` | The starting `HexSpace` y-coordinate of the citizen
-`addToStage` | `boolean` | **Optional** Should the citizen be added to the stage? Default `true`
 
 *Returns* `this`
 
 ==========================================
 
-#####`addCitizenFromTexture(texture, name, x, y, height, width, addToStage)`
+#####`addCitizenFromTexture(texture, name, x, y, height, width)`
 Like `addCitizen`, except creates a sprite from a texture
 
 Arguments | Type    | Notes
@@ -179,7 +210,6 @@ x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
 y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
 height    | `integer` | **Optional** The height of the sprite, defaults to the hexRadius of the grid
 width     | `integer` | **Optional** The width of the sprite, defaults to the hexRadius of the grid
-`addToStage` | `boolean` | **Optional** Should the citizen be added to the stage? Default `true`
 
 *Returns* `this`
 
@@ -209,7 +239,7 @@ Moves a citizen to the grid space specified by the provided coordinates in the t
 
 **Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the citizen will...do something else.
 
-**Note** If `time <= 0`, this method behaves as the signature `moveCitizenTo(citizen, x, y)`
+**Note** If `time <= 0`, this method behaves as the signature `moveCitizenTo(citizen, x, y)`, meaning neither `animation` nor `endAnimation` will be called
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -286,25 +316,12 @@ hexX      | `integer` | The `HexSpace` x-coordinate
 hexY      | `integer` | The `HexSpace` y-coordinate
 name      | `string` | name from which to instantiate a registered `Terrain` feature
 
-*Returns* `this`
+*Returns* `type:PIXI.HexGrid.Terrain` The new terrain feature just added.
 
 ==========================================
 
 #####`removeTerrain(hexX, hexY, name)`
 Removes a terrain feature specified by `name` from the hex grid space specified by `hexX` and `hexY`
-
-Arguments | Type    | Notes
-----------|---------|---------
-hexX      | `integer` | The `HexSpace` x-coordinate
-hexY      | `integer` | The `HexSpace` y-coordinate
-name      | `string` | name of the `Terrain` feature to remove
-
-*Returns* `this`
-
-==========================================
-
-#####`applySprites()`
-Empties the grid of all existing children and applies all sprites for citizens, terrains, and superpositions.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -354,14 +371,35 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`occupy(combatant)`
-Occupies the `HexSpace` with an occupier, and also vacates the previous `HexSpace` of the occupier, if any
+#####`occupy(citizen)`
+Occupies the `HexSpace` with a `Citizen`
 
 Arguments | Type    | Notes
 ----------|---------|---------
-combatant | Combatant| A combatant moving into the hex space
+`citizen` | `type:Citizen` | A citizen moving into the hex space
 
 *Returns* `BOOLEAN` Successful?
+
+==========================================
+
+#####`vacate(formerCitizen)`
+Removes a `Citizen` from the `HexSpace`
+
+Arguments | Type    | Notes
+----------|---------|---------
+`formerCitizen` | `type:Citizen` | A citizen leaving the hex space
+
+*Returns* `BOOLEAN` Successful?
+
+==========================================
+
+#####`reorient()`
+Reorients any occupants of the hex grid so that they overlap as little as possible
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+*Returns* void
 
 ==========================================
 
@@ -405,7 +443,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 
 
-*Returns* `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the `attributes` object assigned to each terrain type found on the grid space. **Note** This makes a shallow copy of the terrain object stored internally in the HexSpace, but the attributes objects will be the same objects with which the client registered the Terrain type.
+*Returns* `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the corresponding `PIXI.HexGrid.Terrain` object
 
 ==========================================
 
@@ -420,7 +458,7 @@ The `Terrain` class is meant as a way to add different terrain to the spaces of 
 
 ####Static Methods
 
-#####`Terrain.registerNewType (name, texture, attributes[, layer])`
+#####`PIXI.HexGrid.Terrain.registerNewType (name, texture, attributes[, layer])`
 Registers a new type of terrain
 
 Arguments | Type    | Notes
