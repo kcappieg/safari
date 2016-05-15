@@ -4,15 +4,11 @@ HexGrid
 
 author Kevin C. Gall
 ******************************/
-if (typeof PIXI !== "object"){
-  throw new Error ("Failed to find PIXI object. Be sure PIXI.js is loaded before this extension");
-}
-var dev = {};
 
-(function(){
-"use strict";
+define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
+  "use strict";
 
-//UTILITIES
+  //UTILITIES
   //below Class is meant to flatten a regular rectangular 2-d grid (where the length of every array is uniform)
   function Flat2dGrid(array){
     var flatArray = [];
@@ -223,7 +219,7 @@ var dev = {};
     ctx.beginPath();
     if (rotate){
       ctx.translate(cWidth, 0);
-      canvasX += cWidth;
+      //canvasX += cWidth;
       ctx.rotate(Math.PI/2);
       ctx.moveTo(0,0);
     }
@@ -295,7 +291,7 @@ var dev = {};
             translateDistance += radius;
             if (!lastRow){
               if (rotate){
-                hexSpaces[i][j] = new HexSpace(/*x param*/canvasX - hexHeight /2, /*y param*/canvasY+translateDistance - radius/2, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
+                hexSpaces[i][j] = new HexSpace(/*x param*/canvasX + hexHeight /2, /*y param*/canvasY+translateDistance - radius/2, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
               } else {
                 hexSpaces[j][i] = new HexSpace(/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2, /*gridX*/j, /*gridY*/i, /*radius*/ radius);
               }
@@ -378,7 +374,7 @@ var dev = {};
 
       ctx.translate(0, hexHeight);
       if (rotate){
-        canvasX -= hexHeight;
+        canvasX += hexHeight;
       } else {
         canvasY += hexHeight;
       }
@@ -414,16 +410,21 @@ var dev = {};
     return angle;
   }
 
-  //function for moving a sprite using a ticker object
+  //function for moving a citizen's sprite using a ticker object
   //endAnimation will be called when the movement is completed, and so can include other wrap-up functionality
   //returns object with 2 properties:
   //  interrupt: a function which will interrupt the movement and call the endAnimation function
   //  facing: angle (in radians) of the direction the sprite is moving - Left: 0, down: Math.PI/2, right: Math.PI, up: Math.PI * (3/2)
-  function moveSprite(sprite, destX, destY, time, movingAnimation, endAnimation){
-  //check for invalid parameters
-    if (sprite.constructor !== PIXI.Sprite){
-      throw new Error ("Not a valid sprite object");
+  function moveCitizen(citizen, destX, destY, time, movingAnimation, endAnimation){
+    if (citizen.moving){
+      var oldEndAnimation = citizen.interrupt(true);
+      if (typeof endAnimation !== "function"){
+        endAnimation = oldEndAnimation;
+      }
     }
+
+    var sprite = citizen.sprite;
+
     destX = parseInt (destX);
     destY = parseInt (destY);
     if (destX !== destX || destY !== destY){
@@ -456,6 +457,8 @@ var dev = {};
       }
 
       if (sprite.x === destX && sprite.y === destY){
+        citizen.clearInterrupt();
+        citizen.moving = false;
         if (typeof endAnimation === "function"){
           this.remove();
           this.addOnce(function(){
@@ -465,7 +468,6 @@ var dev = {};
         } else{
           this.remove();
         }
-
       }
     }, ticker);
 
@@ -479,21 +481,56 @@ var dev = {};
       ticker.add(registerAnimation);
     }
 
-    ticker.start();
-    return {
-      interrupt: function(){
-        if (typeof endAnimation === "function"){
-          ticker.remove();
-          ticker.addOnce(function(){
-            endAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, sprite);
-            ticker.stop();
-          });
-        } else {
+    citizen.moving = true;
+    citizen.facing = angle;
+    citizen.setInterrupt(function(stillMoving){
+      if (typeof endAnimation === "function" && !stillMoving){
+        ticker.remove();
+        ticker.addOnce(function(){
+          endAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, sprite);
           ticker.stop();
-        }
-      },
-      facing: angle
-    };
+        });
+      } else {
+        ticker.stop();
+        return endAnimation;
+      }
+    });
+
+    ticker.start();
+  }
+
+//takes the center point, the radius, and the offset angle (how much it is rotated) in radians and returns the radial point.
+//Rotation of 0 is straight up on the y-axis and it goes clockwise
+  function calculateRadialPoint (center, radius, rotation) {
+    var angle, xMod, yMod, x, y;
+
+    rotation = rotation || 0;
+    if (rotation === 0) {
+      return new PIXI.Point(center.x, center.y - radius);
+    } else if (rotation < Math.PI/2){
+      xMod = 1, yMod = -1;
+      angle = Math.PI/2 - rotation;
+    } else if (rotation === Math.PI/2){
+      return new PIXI.Point(center.x+radius, center.y);
+    } else if (rotation < Math.PI){
+      xMod = 1, yMod = 1;
+      angle = rotation - Math.PI/2;
+    } else if (rotation === Math.PI){
+      return new PIXI.Point(center.x, center.y + radius);
+    } else if (rotation < Math.PI * (3/2)){
+      xMod = -1, yMod = 1;
+      angle = Math.PI * (3/2) - rotation;
+    } else if (rotation === Math.PI * (3/2)){
+      return new PIXI.Point(center.x-radius, center.y);
+    } else {
+      xMod = -1, yMod = -1;
+      angle = rotation - Math.PI * (3/2);
+    }
+
+    x = Math.cos(angle) * radius * xMod;
+    y = Math.sin(angle) * radius * yMod;
+
+    return new PIXI.Point(center.x + x, center.y+y);
   }
 
 //CLASSES
@@ -502,6 +539,7 @@ var dev = {};
  * Below is an unfinished first pass. Many unresolved needs. Doesn't account for GameCharacter interface.
  */
   function HexSpace(x, y, gridX, gridY, radius){
+    var that = this;
     
     Object.defineProperty(this, "x", {
       value: x,
@@ -539,7 +577,7 @@ var dev = {};
     Object.defineProperty(this, "maxOccupancy", {
       configurable: false,
       enumerable: true,
-      get: function(){return maxOccupancy;},
+      get: function(){return Math.max(maxOccupancy, 0);},
       set: function(){throw new Error("Cannot set maxOccupancy property");}
     });
 
@@ -547,7 +585,7 @@ var dev = {};
     this.getOccupants = function(){
       var o = [];
       for (var i=0; i<occupants.length; i++){
-        o[i] = occupants[i];
+        o[i] = occupants[i].getCitizenLite();
       }
       return o;
     };
@@ -556,12 +594,15 @@ var dev = {};
       if (newOccupant.constructor !== Citizen){
         throw new Error("Illegal occupant: must be citizen of the grid");
       }
+      if (newOccupant.currentHex === this) {
+        return true;
+      }
       if (occupants.length >= maxOccupancy){
         return false;
       } else {
         occupants.push(newOccupant);
-        newOccupant.moving = false;
         newOccupant.currentHex = this;
+        newOccupant.moving = false;
 
         this.reorient();
 
@@ -575,8 +616,8 @@ var dev = {};
         if (occupants[i] === formerOccupant){
           occupants.splice(i, 1);
           success = true;
+          break;
         }
-        break;
       }
 
       if (success){this.reorient();}
@@ -591,7 +632,7 @@ var dev = {};
       var f = newOccupant.facing;
       switch (occupants.length){
         case 1:
-          moveSprite(newOccupant.sprite, this.x, this.y, 500);
+          moveCitizen(newOccupant, this.x, this.y, 250);
           break;
         case 2:
           var left, right;
@@ -603,11 +644,17 @@ var dev = {};
             right = newOccupant;
           }
 
-          moveSprite(left.sprite, this.x - this.radius/2, this.y, 500);
-          moveSprite(right.sprite, this.x + this.radius/2, this.y, 500);
+          moveCitizen(left, this.x - this.radius/2, this.y, 250);
+          moveCitizen(right, this.x + this.radius/2, this.y, 250);
           break;
-        default: //this is here as the default for now, but this section should be built out to cover any number of occupants
-          moveSprite(newOccupant.sprite, this.x, this.y, 500);
+        default:
+          var increment = Math.PI * (2 / occupants.length);
+          var r = this.radius * 0.6;
+          var center = new PIXI.Point(this.x, this.y);
+          for (var i=0; i<occupants.length; i++){
+            var newPoint = calculateRadialPoint(center, r, increment * i);
+            moveCitizen(occupants[i], newPoint.x, newPoint.y, 250);
+          }
           break;
       }
     };
@@ -629,9 +676,7 @@ var dev = {};
       if (terrainFeatures[terrainObject.name]){
         return terrainObject;
       }
-      if (terrainObject.attributes.maxOccupancy){
-        maxOccupancy = Math.max(0, maxOccupancy + terrainObject.attributes.maxOccupancy);
-      }
+      maxOccupancy += terrainObject.maxOccupancyModifier;
 
       terrainFeatures[terrainObject.name] = terrainObject;
       return terrainObject;
@@ -642,7 +687,7 @@ var dev = {};
       var retObject = terrainFeatures[name];
 
       if (retObject.maxOccupancy){
-        maxOccupancy = Math.max(0, maxOccupancy - retObject.maxOccupancy);
+        maxOccupancy = maxOccupancy - retObject.maxOccupancy;
       }
 
       delete terrainFeatures[name];
@@ -658,23 +703,65 @@ var dev = {};
       return attr;
     };
 
-    this.createHexLite = function(){
-      return {
-        gridX: this.gridX,
-        gridY: this.gridY,
-        radius: this.radius,
-        x: this.x,
-        y: this.y,
-        attributes: this.getTerrainAttributes()
-      };
+    var lite;
+    this.getHexLite = function(){
+      if (!lite){
+        lite = {};
+        Object.defineProperty(lite, "x", {
+          value: that.x,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        Object.defineProperty(lite, "y", {
+          value: that.y,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        
+        Object.defineProperty(lite, "gridX", {
+          value: that.gridX,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        Object.defineProperty(lite, "gridY", {
+          value: that.gridY,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        Object.defineProperty(lite, "radius", {
+          value: that.radius,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        Object.defineProperty(lite, "getTerrainAttributes", {
+          value: that.getTerrainAttributes,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+        Object.defineProperty(lite, "getOccupants", {
+          value: that.getOccupants,
+          writable: false,
+          configurable: false,
+          enumerable: true,
+        });
+      }
+      return lite;
     };
   }
 
-  function Citizen(sprite, name){
+  function Citizen(sprite, name, extAttributes){
     //instance variables
     var currentHex;
     var moving = false;
     var facing = Math.PI;
+    var attributes = extAttributes ? extAttributes : {};
+    var that = this;
 
   //the direction the citizen is facing, usually based on its last movement direction. Left: 0, down: Math.PI/2, right: Math.PI, up: Math.PI * (3/2)
     Object.defineProperty(this, "facing", {
@@ -707,6 +794,8 @@ var dev = {};
       set: function(hex){
         if (hex.constructor === HexSpace){
           currentHex = hex;
+        } else {
+          currentHex = null;
         }
       }
     });
@@ -724,6 +813,71 @@ var dev = {};
       configurable: false,
       enumerable: true
     });
+
+  //METHODS
+
+  //interruptMovementMethod with closure-based function it calls
+    var interruptFunctionDefault = function(){};
+    var interruptFunction = interruptFunctionDefault;
+    this.setInterrupt = function(fn){
+      interruptFunction = fn;
+    };
+    this.clearInterrupt = function(){
+      interruptFunction = interruptFunctionDefault;
+    };
+    this.interrupt = function(){
+      var fn = interruptFunction;
+      interruptFunction = interruptFunctionDefault;
+      return fn.apply(undefined, arguments);
+    };
+
+    var lite;
+    this.getCitizenLite = function(){
+      if (!lite){
+        lite = {};
+        Object.defineProperty(lite, "facing", {
+          configurable: false,
+          enumerable: true,
+          get: function(){return facing;}
+        });
+        Object.defineProperty(lite, "moving", {
+          configurable: false,
+          enumerable: true,
+          get: function(){return moving;}
+        });
+        Object.defineProperty(lite, "currentHex", {
+          configurable: false,
+          enumerable: true,
+          get: function(){return currentHex.getHexLite();}
+        });
+
+        Object.defineProperty(lite, "sprite", {
+          value: that.sprite,
+          writable: false,
+          configurable: false,
+          enumerable: true
+        });
+        Object.defineProperty(lite, "name", {
+          value: that.name,
+          writable: false,
+          configurable: false,
+          enumerable: true
+        });
+        Object.defineProperty(lite, "attributes", {
+          value: extAttributes,
+          writable: false,
+          configurable: false,
+          enumerable: true
+        });
+        Object.defineProperty(lite, "interrupt", {
+          value: that.interrupt,
+          writable: false,
+          configurable: false,
+          enumerable: true
+        });
+      }
+      return lite;
+    }
   }
 
   /**
@@ -830,7 +984,7 @@ var dev = {};
 
     hexGridManager.hexAt = function(x, y){
       var hex = kdTree.nearestNeighbor(x, y);
-      return hex.createHexLite();
+      return hex.getHexLite();
     }
 
     hexGridManager.distanceBetween = function(x1, y1, x2, y2){
@@ -861,6 +1015,7 @@ var dev = {};
           } catch (e){}
         }
       }
+      return adjacentHexArray;
     };
 
   //caches the last 10 paths to save on repetitive computation
@@ -870,12 +1025,7 @@ var dev = {};
       //if cached, return the cached value
       var id = ""+gridX1+gridY1+gridX2+gridY2;
       if (hexPathCache[id]){
-        var iH = hexPathCache[id];
-        for (var i=0; i<iH.length; i++){
-        //need to reacquire the terrain attributes in case they've changed
-          iH[i].attributes = hexArray.getAt(iH[i].gridX, iH[i].gridY).getTerrainAttributes();
-        }
-        return iH;
+        return hexPathCache[id];
       }
 
       var intersectingHexes = [];
@@ -893,7 +1043,7 @@ var dev = {};
       while (currentDistance < totalDistance){
         currentHex = kdTree.nearestNeighbor(currentX, currentY);
         if (currentHex !== lastHex){
-          intersectingHexes.push(currentHex.createHexLite());
+          intersectingHexes.push(currentHex.getHexLite());
           if (currentHex === destination){
             break;
           }
@@ -916,10 +1066,7 @@ var dev = {};
       return intersectingHexes;
     }
 
-    hexGridManager.addCitizen = function(sprite, name, x, y){
-      if (sprite.constructor !== PIXI.Sprite){
-        throw new Error ("New citizen must be of the class PIXI.Sprite");
-      }
+    hexGridManager.addCitizen = function(sprite, name, x, y, extAttributes){
       if (population[name]){
         throw new Error ("Name already registered! Can't create citizen");
       }
@@ -929,7 +1076,7 @@ var dev = {};
         y1 = 0;
       }
 
-      var newCitizen = new Citizen(sprite, name);
+      var newCitizen = new Citizen(sprite, name, extAttributes);
       var initialHex = hexArray.getAt(x1,y1);
 
       population[name] = newCitizen;
@@ -938,14 +1085,6 @@ var dev = {};
       this.moveCitizenTo(name, x, y, 0);
 
       return this;
-    };
-    hexGridManager.addCitizenFromTexture = function(texture, name, x, y, height, width){
-      var citizen = new PIXI.Sprite(texture);
-      citizen.anchor.x = 0.5;
-      citizen.anchor.y = 0.5;
-      citizen.height = height || hexRadius;
-      citizen.width = width || hexRadius;
-      return this.addCitizen(citizen, name, x, y);      
     };
     hexGridManager.removeCitizen = function(name){
       var c = population[name];
@@ -972,7 +1111,7 @@ var dev = {};
         if (success){
           break;
         } else {
-          adjacent = hexGridManager.adjacentHexes(next);
+          adjacent = hexGridManager.adjacentHexes(next.gridX, next.gridY);
           shuffle(adjacent);
           for (var i=0; i<adjacent.length; i++){
             var a = adjacent[i];
@@ -1001,7 +1140,6 @@ var dev = {};
       var c = population[citizen];
       var hex = hexArray.getAt(x, y);
       var originHex = c.currentHex;
-      var moveSpriteObject;
 
     //if time is 0 or undefined, simply jump to the destination immediately
       if ((time || 0) === 0) {
@@ -1020,7 +1158,12 @@ var dev = {};
           if (!landingHex.occupy(c)){
             var path = that.hexesBetween(originHex.gridX, originHex.gridY, hex.gridX, hex.gridY);
             var lastHexProxy = path[path.length-2];
-            var lastHex = hexArray.getAt(lastHexProxy.gridX, lastHexProxy.gridY);
+            var lastHex;
+            if (lastHexProxy){
+              lastHex = hexArray.getAt(lastHexProxy.gridX, lastHexProxy.gridY);
+            } else {
+              lastHex = originHex;
+            }
             occupy(lastHex, c, that);
           }
         } else {
@@ -1031,26 +1174,18 @@ var dev = {};
         }
       };
 
-      c.moving = true;
       if (originHex){
         originHex.vacate(c);
       }
-    //returns an object with: interrupt - function to stop the movement, facing: angle of the direction their facing
-      moveSpriteObject = moveSprite(c.sprite, hex.x, hex.y, (time || 0), animation, ea2);
-      c.facing = moveSpriteObject.facing;
-      return moveSpriteObject.interrupt;
+    //Sets facing, moving and interrupt on the passed citizen object
+      moveCitizen(c, hex.x, hex.y, (time || 0), animation, ea2);
+      return c.interrupt;
     };
 
   //Citizen accessor functions
-    hexGridManager.getCitizenSprite = function(name){
-      return population[name].sprite;
-    }
-    hexGridManager.getCitizenDirection = function(name){
-      return population[name].facing;
-    }
-    hexGridManager.isCitizenMoving = function(name){
-      return population[name].moving;
-    }
+    hexGridManager.getCitizen = function(name){
+      return population[name].getCitizenLite();
+    };
 
     hexGridManager.addTerrain = function(hx, hy, name){
       var hex = hexArray.getAt(hx, hy);
@@ -1117,21 +1252,38 @@ var dev = {};
     }
     this.attributes = attributes;
     this.name = name;
-    this.layer = terrainRegister[name].layer;
+    Object.defineProperty(this, "layer", {
+      value: terrainRegister[name].layer,
+      configurable: false,
+      writable: false,
+      enumerable: true
+    });
+    Object.defineProperty(this, "maxOccupancyModifier", {
+      value: terrainRegister[name].maxOccupancyModifier,
+      configurable: false,
+      writable: false,
+      enumerable: true
+    });
   };
 
   var terrainRegister = {};
-  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes, layer){
-    if (layer !== "overlay"){
+  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes, layer, maxOccupancyModifier){
+    if (typeof layer === "number"){
+      maxOccupancyModifier = layer;
       layer = "underlay";
+    } else if (layer !== "overlay"){
+      layer = "underlay";
+      maxOccupancyModifier = 0;
     }
 
     terrainRegister[name] = {
       texture: texture,
       attributes: attributes,
-      layer: layer
+      layer: layer,
+      maxOccupancyModifier: maxOccupancyModifier
     };
     return PIXI.HexGrid.Terrain;
   };
 
-})();
+  return PIXI;
+});

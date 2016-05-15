@@ -37,7 +37,7 @@ Create a prototype for the Safari main combat gameplay.
 
 ###Known Bugs
 
-* `HexSpace.addTerrain()` and `HexSpace.removeTerrain()`: It's possible to cause a space's max occupancy to go too high if a terrain feature's `maxOccupancy` property would bring the occupancy below 0. The space's max occupancy stays at 0, but if that feature is removed, it would be increased up the full value of the `maxOccupancy` property
+...
 
 ###`PIXI.HexGrid`
 
@@ -185,31 +185,16 @@ Uses a 2-dimensional K-D tree behind the scenes and polls each point along the l
 
 ==========================================
 
-#####`addCitizen(sprite, name, x, y)`
+#####`addCitizen(sprite, name, x, y[, extAttributes])`
 Add a citizen to the population of the `HexGrid`. The citizen construct is a way to abstract the nitty-gritty of dealing with the position of your sprites. They can be moved, interacted with, and given commands via the HexGrid. They occupy a `HexSpace`, and can be commanded to move etc. Sprites associated with citizens are automatically added to the `citizenLayer`.
 
 Arguments | Type    | Notes
 ----------|---------|---------
 `sprite`    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
 `name`      | `string` | name with which to register the sprite
-`x`         | `integer` | The starting `HexSpace` x-coordinate of the citizen
-`y`         | `integer` | The starting `HexSpace` y-coordinate of the citizen
-
-*Returns* `this`
-
-==========================================
-
-#####`addCitizenFromTexture(texture, name, x, y, height, width)`
-Like `addCitizen`, except creates a sprite from a texture
-
-Arguments | Type    | Notes
-----------|---------|---------
-texture   | `type:PIXI.Texture` | Must be a `PIXI.Texture` object
-name      | `string` | name with which to register the sprite
-x         | `integer` | The starting `HexSpace` x-coordinate of the citizen
-y         | `integer` | The starting `HexSpace` y-coordinate of the citizen
-height    | `integer` | **Optional** The height of the sprite, defaults to the hexRadius of the grid
-width     | `integer` | **Optional** The width of the sprite, defaults to the hexRadius of the grid
+`x`         | `number:Integer` | The starting `HexSpace` x-coordinate of the citizen
+`y`         | `number:Integer` | The starting `HexSpace` y-coordinate of the citizen
+`extAttributes` | `object` | **Optional** Freeform object. This object is not modified or manipulated by the hex grid, but could be useful for keeping track of your game element with the internal citizen construct.
 
 *Returns* `this`
 
@@ -265,45 +250,18 @@ endAnimation | `function` | **Optional** If an `animation` function was passed, 
  * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
 * `sprite` - `type:PIXI.Sprite` object of the citizen being moved
 
-*Returns* `function` Interrupt the movement and stop the citizen exactly where it is. If passed, the `endAnimation` function will be invoked.
+*Returns* `function` Takes no arguments. When called, iterrupts the movement and forces the citizen to occupy the nearest `HexSpace`
 
 ==========================================
 
-#####`getCitizenSprite(name)`
-Get the sprite of a citizen previously added to the grid. The Sprite can be updated independently by the client, but certain future commands may override user specifications, for instance position (x and y coordinates).
+#####`getCitizen(name)`
+Get the `CitizenLite` object of a citizen previously added to the grid. Object described below
 
 Arguments | Type    | Notes
 ----------|---------|---------
 name      | `string` | name of a citizen previously registered into the grid
 
-*Returns* `type:PIXI.Sprite` The `PIXI.Sprite` object of the citizen.
-
-==========================================
-
-#####`getCitizenDirection(name)`
-Get the direction the citizen is facing based on its most recent movement. The return value is an angle in radians. See the *Returns* section below for details
-
-Arguments | Type    | Notes
-----------|---------|---------
-name      | `string` | name of a citizen previously registered into the grid
-
-*Returns* `number:Float` - Angle in radians that describes the direction the citizen moved or is moving. Possible values from [0, 2*pi). A value of 0 means the citizen is facing left on the grid, and it proceeds clockwise:
-
-* Left: 0
-* Down: pi/2
-* Right: pi
-* Up: pi * 3/2
-
-==========================================
-
-#####`isCitizenMoving(name)`
-The boolean of whether the citizen is in the process of moving as a result of a call to the `moveCitizenTo()` method.
-
-Arguments | Type    | Notes
-----------|---------|---------
-name      | `string` | name of a citizen previously registered into the grid
-
-*Returns* `boolean` Is the citizen moving?
+*Returns* `type:CitizenLite` The object describing the citizen.
 
 ==========================================
 
@@ -333,31 +291,141 @@ name      | `string` | name of the `Terrain` feature to remove
 
 ==========================================
 
-###`PIXI.HexGrid.HexSpace`
+###`Citizen`
 
-Partially mutable class. Coordinates cannot be changed, but other attributes such as occupants or potentially terrain features / cover may be.
+Private class. Not accessible to clients.
 
-This is the default grid space class, which can be overridden when initializing a new `HexGrid`.
+####Constructors
+
+#####`Citizen(sprite, name, extAttributes)
+
+Private Class
+
+Arguments | Type | Details
+--------- | ---- | -------
+`sprite` | `type:PIXI.Container` | PIXI container object, usually a sprite, which graphically represents the citizen.
+`name` | `string` | Name of the citizen
+`extAttributes` | `object` | Freeform object. Not manipulated or changed, simply referenced for convenience when using the HexGrid. Use this object to store client-specific stats.
+
+####Properties
+
+#####`facing`
+`number:Float`: Number between [0, 2*PI) which indicates the direction the citizen is facing based on its last movement direction.
+
+#####`moving`
+`boolean`: Is the citizen currently moving?
+
+#####`currentHex`
+`type:HexSpace`: The current `HexSpace` that the citizen is occupying
+
+#####`sprite`
+`type:PIXI.Container`: The PIXI container object, usually `PIXI.Sprite`, which represents this citizen
+
+#####`name`
+`string`: The name this citizen was registered with. Must be unique in the `HexGrid`.
+
+####Methods
+
+#####`interrupt()`
+
+If an interrupt function has been set via the `setInterrupt` method, calls that function and wipes it out so that it can't be called again.
+
+Arguments | Type | Details
+--------- | ---- | -------
+
+*Returns* The return value of the interrupt function set.
+
+============================================
+
+#####`setInterrupt(fn)`
+
+Set the interrupt function to be called with `interrupt()`
+
+Arguments | Type | Details
+--------- | ---- | -------
+`fn`  | `function` | A function which should end the citizen's movement
+
+*Returns* void
+
+============================================
+
+#####`clearInterrupt()`
+
+Clear the interrupt function set with `setInterrupt`
+
+Arguments | Type | Details
+--------- | ---- | -------
+
+*Returns* void
+
+============================================
+
+#####`getCitizenLite()`
+
+Returns an object of the type `CitizenLite`, which is basically a client-safe version of this object
+
+Arguments | Type | Details
+--------- | ---- | -------
+
+*Returns* `type:CitizenLite` Corresponds to this citizen.
+
+============================================
+
+###`CitizenLite`
+
+Public Class
+
+Accessed via the `getCitizenLite()` method on the `Citizen` class.
+
+As the `Citizen` class with the below properties and methods. (Descriptions provided where necessary):
+
+* `facing`
+* `moving`
+* `currentHex`
+* `sprite`
+* `name`
+* `attributes` - `object` The `extAttributes` object passed to the constructor.
+* `interrupt`
+
+**Please Note** All properties and methods are read-only and non-configurable. The `interrupt` method is a reference to the `Citizen`'s `interrupt` method, but cannot affect the interrupt function registered.
+
+###`HexSpace`
+
+Private class.
+
+This is the grid space class used internally to represent a space in the grid.
+
+####Constructors
+
+#####`HexSpace(x, y, gridX, gridY, radius)`
+
+Arguments | Type | Details
+--------- | ---- | -------
+`x` | `number` | x-coordinate on the grid stage of the hex space
+`y` | `number` | y-coordinate on the grid stage of the hex space
+`gridX` | `number:Integer` | The x-coordinate of the grid space in relation to the grid (not pixels);
+`gridY` | `number:Integer` | The y-coordinate of the grid space in relation to the grid (not pixels);
+`radius` | `number` | The radius of the hexagonal polygon.
 
 ####Properties
 
 #####`x`
-`INTEGER` **Read-Only** The x-coordinate of the grid space on the stage (in pixels)
+`number` **Read-Only** The x-coordinate of the grid space on the stage (in pixels)
 
 #####`y`
-`INTEGER` **Read-Only** The y-coordinate of the grid space on the stage (in pixels)
+`number` **Read-Only** The y-coordinate of the grid space on the stage (in pixels)
 
 #####`gridX`
-`INTEGER` **Read-Only** The x-coordinate of the grid space in relation to the grid (not pixels);
+`number:Integer` **Read-Only** The x-coordinate of the grid space in relation to the grid (not pixels);
 
 #####`gridY`
-`INTEGER` **Read-Only** The y-coordinate of the grid space in relation to the grid (not pixels);
+`number:Integer` **Read-Only** The y-coordinate of the grid space in relation to the grid (not pixels);
 
 #####`radius`
-`INTEGER` **Read-Only** The radius of the HexSpace (as initialized);
+`number` **Read-Only** The radius of the HexSpace (as initialized);
 
 #####`maxOccupancy`
-`INTEGER` **Read-Only** The maximum number of occupants that can fit in the `HexSpace`. Calculated based on terrain, and so may change if terrain changes.
+`number:Integer` **Read-Only** The maximum number of occupants that can fit in the `HexSpace`. Calculated based on terrain, and so may change if terrain changes.
 
 ####Methods
 
@@ -367,7 +435,7 @@ Returns the occupant(s) of the space if any
 Arguments | Type    | Notes
 ----------|---------|---------
 
-*Returns* `ARRAY:OBJECT` Array of the occupants of the space
+*Returns* `Array[type:CitizenLite]` Array of the occupants of the space
 
 ==========================================
 
@@ -378,7 +446,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `citizen` | `type:Citizen` | A citizen moving into the hex space
 
-*Returns* `BOOLEAN` Successful?
+*Returns* `boolean` Successful?
 
 ==========================================
 
@@ -389,7 +457,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `formerCitizen` | `type:Citizen` | A citizen leaving the hex space
 
-*Returns* `BOOLEAN` Successful?
+*Returns* `boolean` Successful?
 
 ==========================================
 
@@ -425,18 +493,18 @@ name | `string` | The name of the new terrain feature to be removed
 
 ==========================================
 
-#####`createHexLite()`
-Creates a copy of the properties of the hex object (with the terrain attributes currently present), but without any of its methods
+#####`getHexLite()`
+Gets a client-safe version of this object, `HexSpaceLite`. Described below
 
 Arguments | Type    | Notes
 ----------|---------|---------
 
 
-*Returns* `object` Object with the properties of `this`, but without any of its methods. Additionally has `attributes` property, which is an object whose properties are terrain attributes for all terrain types on this hex space.
+*Returns* `type:HexSpaceLite` Represents this `HexSpace`
 
 ==========================================
 
-#####`getTerrainAttributes()`
+#####`getTerrainFeatures()`
 
 
 Arguments | Type    | Notes
@@ -447,18 +515,50 @@ Arguments | Type    | Notes
 
 ==========================================
 
+###`HexSpaceLite`
+
+Public class.
+
+Accessed via the `getHexLite()` method on the `HexSpace` class.
+
+As the `HexSpace` class with the below properties and methods. (Descriptions provided where necessary):
+
+* `x`
+* `y`
+* `gridX`
+* `gridY`
+* `radius`
+* `getTerrainFeatures`
+* `getOccupants`
+
+**Please Note** All properties and methods are read-only and non-configurable. The `interrupt` method is a reference to the `Citizen`'s `interrupt` method, but cannot affect the interrupt function registered.
+
+
+
 ###`PIXI.HexGrid.Terrain`
 The `Terrain` class is meant as a way to add different terrain to the spaces of the hex grid. Each `Terrain` object has a base texture from which new sprites are created (as the background for the hex space). It also has an `attributes` object which should be defined on the client side to fit your game's needs.
+
+####Constructors
+
+#####`PIXI.HexGrid.Terrain(name)`
+
+Constructs a `Terrain` object from a pre-registered terrain type specified by `name`
+
+Arguments | Type | Details
+--------- | ---- | -------
+`name` | `string` | The name of a pre-registered terrain type.
 
 ####Properties
 
 * name - `string` The name of the terrain feature
-* sprite - `type:PIXI.Sprite` The unique sprite object of this terrain feature
-* attributes - `object` A unique object copied to this object detailing the terrain feature's attributes
+* sprite - `type:PIXI.Sprite` The unique sprite object of this terrain feature, created from the registered texture when initialize
+* attributes - `object` A freeform object shallow copied to this instance detailing the terrain feature's attributes
+* layer - `string` **READ-ONLY** The layer that the terrain's sprite will be rendered in
+* maxOccupancyModifier - `number:Integer` **READ-ONLY** The modifier this terrain applies to the max occupancy of the grid it is in.
 
 ####Static Methods
 
-#####`PIXI.HexGrid.Terrain.registerNewType (name, texture, attributes[, layer])`
+#####`PIXI.HexGrid.Terrain.registerNewType (name, texture, attributes[, layer][, maxOccupancyModifier])`
 Registers a new type of terrain
 
 Arguments | Type    | Notes
@@ -466,19 +566,7 @@ Arguments | Type    | Notes
 name      | `string` | The name of the terrain type
 texture   | `type:PIXI.Texture` | The texture from which to create new sprites for this terrain feature
 attributes | `object` | Client-specific object which describes attributes of this terrain feature
-layer | `string` | Either `"overlay"` or `"underlay"`, indicating which layer the terrain's sprite should be put on
+layer | `string` | **Optional** Either `"overlay"` or `"underlay"`, indicating which layer the terrain's sprite should be put on
+maxOccupancyModifier | `number:Integer` | **Optional** modifier to the max occupancy of the hex gridspace
 
 *Returns* `PIXI.HexGrid.Terrain` for chaining
-
-==========================================
-
-####Constructors
-
-#####`new PIXI.Hexgrid.Terrain(name)`
-Returns a new instance of a `Terrain` that has been registered already. Throws an error if `name` has not been registered.
-
-Arguments | Type    | Notes
-----------|---------|---------
-name      | `string` | The name of the terrain type
-
-*Returns* `type:PIXI.HexGrid.Terrain` object

@@ -24,6 +24,9 @@
     "url": "https://github.com/kcappieg/safari.git"
   },
   "dependencies": {
-    "mime": "^1.3.4"
+    "eventemitter3": "^1.2.0",
+    "mime": "^1.3.4",
+    "pixi.js": "^3.0.11",
+    "requirejs": "^2.2.0"
   }
 }
