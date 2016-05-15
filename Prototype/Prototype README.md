@@ -389,6 +389,8 @@ As the `Citizen` class with the below properties and methods. (Descriptions prov
 
 **Please Note** All properties and methods are read-only and non-configurable. The `interrupt` method is a reference to the `Citizen`'s `interrupt` method, but cannot affect the interrupt function registered.
 
+======================================
+
 ###`HexSpace`
 
 Private class.
@@ -531,9 +533,9 @@ As the `HexSpace` class with the below properties and methods. (Descriptions pro
 * `getTerrainFeatures`
 * `getOccupants`
 
-**Please Note** All properties and methods are read-only and non-configurable. The `interrupt` method is a reference to the `Citizen`'s `interrupt` method, but cannot affect the interrupt function registered.
+**Please Note** All properties and methods are read-only and non-configurable. The `getTerrainFeatures` and `getOccupants` methods are a reference to the `HexSpace`'s methods.
 
-
+==============================
 
 ###`PIXI.HexGrid.Terrain`
 The `Terrain` class is meant as a way to add different terrain to the spaces of the hex grid. Each `Terrain` object has a base texture from which new sprites are created (as the background for the hex space). It also has an `attributes` object which should be defined on the client side to fit your game's needs.
