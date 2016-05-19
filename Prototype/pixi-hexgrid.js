@@ -694,7 +694,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       return retObject;
     };
 
-    this.getTerrainAttributes = function(){
+    this.getTerrainFeatures = function(){
       var attr = {};
       for (var name in terrainFeatures){
         attr[name] = terrainFeatures[name];
@@ -738,8 +738,8 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
           configurable: false,
           enumerable: true,
         });
-        Object.defineProperty(lite, "getTerrainAttributes", {
-          value: that.getTerrainAttributes,
+        Object.defineProperty(lite, "getTerrainFeatures", {
+          value: that.getTerrainFeatures,
           writable: false,
           configurable: false,
           enumerable: true,
