@@ -38,4 +38,48 @@ Combantants strategize based on enemy positions to plan their attacks. Each comb
 
  *The above describes a chain of responsibility. Each step can be a function. The function takes the array of enemy combatants. It can run filtering operations and pass it to the next function, or it can declare the process finished and not pass it along the chain. The final function is a default method of narrowing down the options. It could be a combatant-specific algorithm: random, only melee combatants (and from there random) etc.*
 
+ Part of filtering process can be based on keywords associated with each combatant. Keywords can include:
+
+* Melee
+* Ranged
+* Sniper
+* Medic
+* Commander
+* Weak
+* Sneaky
+
+Keywords can be based on ENUMS declared as static variabels somewhere...
+
  **Still need to figure out what to do after combatant is chosen. Maybe it doesn't matter. They can choose a target but still run away in the next phase (which is choosing a course of action)**
+
+####**2.** Choose a course of action
+
+* Receive messages from Allies
+* Decide behavior based on algorithm specific to that character or character type
+  * If action is being interrupted, determine whether or not to continue action or change course
+  * Determine whether Ally messages will be used or ignored
+  * If Ally messages ignored, run behavioral algorithm
+
+**Behavioral Algorithm** should check for different conditions in a hierarchical order. When conditions are met, a prescribed action should be taken (attack, move, retreat, defend, etc.). If none of the conditions listed are met, there should be a default action.
+
+####**3.** Send Message [OPTIONAL]
+
+* Send message to fellow combatants
+
+ **Note:** Messages from allies can be split into categories - choosing targets vs. course of action. Choosing Target messages can be filtering functions, Course of Action messages can be behavioral functions which use the Combatant object interface to perform actions. Or Course of Action can be strings which name possible actions, passed with a data object (if relevant). The data object would hold information such as which Hex to move to, which enemy to attack.
+
+ **Note:** Part of a character's attributes can be a) How much influence they have with other people, b) How much they are willing to listen to others' messages. If the chances are low that a character will listen to others' messages, those messages are simply discarded unused.
+
+ **Note:** A combatant can send messages to an enemy. Messages from enemies will rate the message based on danger. Messages to attack or move somewhere will be high danger, and so incredibly unlikely to be followed. Messages to retreat will be lower danger, so more likely to be followed (especially as health gets lower).
+
+####**4.** Begin chosen action
+
+####**5.** Interrupt [OPTIONAL]
+
+* Check for interrupt events during action execution
+* If combatant is being interrupted, go back to Step 1
+
+####**6.** Finish Action
+
+* Finish
+* Go back to step 1 to reassess
