@@ -24,7 +24,7 @@ Arguments | Type   | Notes
 --------- | -------|------
 `number`  | `number:Integer` | The maximum number of `Citizen`s that can occupy any `HexSpace` by default in the `HexGrid` when initialized.
 
-*Returns* `this`
+**Returns** `this`
 
 ######Implementation Notes
 
@@ -44,7 +44,7 @@ Arguments | Type    | Notes
 `gridColor` | `string` | **Optional** `<color>` string as defined by CSS specifications, used as the pen color for stroking the grid lines
 `rotate`    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
 
-*Returns* `type:HexGridManager`
+**Returns** `type:HexGridManager`
 
 ==========================================
 
@@ -99,7 +99,7 @@ Arguments | Type    | Notes
 `gridX`   | `number:Integer` | Hex Grid x Coordinate
 `gridY`   | `number:Integer` | Hex Grid y Coordinate
 
-*Returns* `type:PIXI.Point`
+**Returns** `type:PIXI.Point`
 
 ==========================================
 
@@ -111,7 +111,7 @@ Arguments | Type    | Notes
 `x`   | `number:Integer` | x Coordinate
 `y`   | `number:Integer` | y Coordinate
 
-*Returns* `object` As the `HexLite` object returned from the `HexSpace.createHexLite()` method
+**Returns** `object` As the `HexLite` object returned from the `HexSpace.createHexLite()` method
 
 ==========================================
 
@@ -125,7 +125,7 @@ y1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid
 x2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
 y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
 
-*Returns* `number:Integer` of distance between 2 spaces in hex space units
+**Returns** `number:Integer` of distance between 2 spaces in hex space units
 
 ==========================================
 
@@ -139,7 +139,7 @@ gridY1 | `number:Integer`| The starting `HexSpace` y-coordinate of the origin
 gridX2 | `number:Integer`| The `HexSpace` x-coordinate of the destination
 gridY2 | `number:Integer`| The `HexSpace` y-coordinate of the destination
 
-*Returns* `ARRAY:Object` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
+**Returns** `ARRAY:Object` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
 
 * `gridX`: `number:Integer` - Hex Grid x Coordinate 
 * `gridY`: `number:Integer` - Hex Grid y Coordinate
@@ -161,7 +161,7 @@ Arguments | Type    | Notes
 `y`         | `number:Integer` | The starting `HexSpace` y-coordinate of the citizen
 `extAttributes` | `object` | **Optional** Freeform object. This object is not modified or manipulated by the hex grid, but could be useful for keeping track of your game element with the internal citizen construct.
 
-*Returns* `this`
+**Returns** `this`
 
 ==========================================
 
@@ -178,7 +178,7 @@ citizen   | `string` | name of a pre-registered citizen on the grid
 x         | `integer` | The destination `HexSpace` x-coordinate of the citizen
 y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
 
-*Returns* `boolean` whether the occupation / movement was successful
+**Returns** `boolean` whether the occupation / movement was successful
 
 ==========================================
 
@@ -215,7 +215,7 @@ endAnimation | `function` | **Optional** If an `animation` function was passed, 
  * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
 * `sprite` - `type:PIXI.Sprite` object of the citizen being moved
 
-*Returns* `function` Takes no arguments. When called, iterrupts the movement and forces the citizen to occupy the nearest `HexSpace`
+**Returns** `function` Takes no arguments. When called, iterrupts the movement and forces the citizen to occupy the nearest `HexSpace`
 
 ==========================================
 
@@ -226,7 +226,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 name      | `string` | name of a citizen previously registered into the grid
 
-*Returns* `type:CitizenLite` The object describing the citizen.
+**Returns** `type:CitizenLite` The object describing the citizen.
 
 ==========================================
 
@@ -239,7 +239,7 @@ hexX      | `integer` | The `HexSpace` x-coordinate
 hexY      | `integer` | The `HexSpace` y-coordinate
 name      | `string` | name from which to instantiate a registered `Terrain` feature
 
-*Returns* `type:PIXI.HexGrid.Terrain` The new terrain feature just added.
+**Returns** `type:PIXI.HexGrid.Terrain` The new terrain feature just added.
 
 ==========================================
 
@@ -252,7 +252,7 @@ hexX      | `integer` | The `HexSpace` x-coordinate
 hexY      | `integer` | The `HexSpace` y-coordinate
 name      | `string` | name of the `Terrain` feature to remove
 
-*Returns* `this`
+**Returns** `this`
 
 ==========================================
 
@@ -298,7 +298,7 @@ If an interrupt function has been set via the `setInterrupt` method, calls that 
 Arguments | Type | Details
 --------- | ---- | -------
 
-*Returns* The return value of the interrupt function set.
+**Returns** The return value of the interrupt function set.
 
 ============================================
 
@@ -310,7 +310,7 @@ Arguments | Type | Details
 --------- | ---- | -------
 `fn`  | `function` | A function which should end the citizen's movement
 
-*Returns* void
+**Returns** void
 
 ============================================
 
@@ -321,7 +321,7 @@ Clear the interrupt function set with `setInterrupt`
 Arguments | Type | Details
 --------- | ---- | -------
 
-*Returns* void
+**Returns** void
 
 ============================================
 
@@ -332,7 +332,7 @@ Returns an object of the type `CitizenLite`, which is basically a client-safe ve
 Arguments | Type | Details
 --------- | ---- | -------
 
-*Returns* `type:CitizenLite` Corresponds to this citizen.
+**Returns** `type:CitizenLite` Corresponds to this citizen.
 
 ============================================
 
@@ -402,7 +402,7 @@ Returns the occupant(s) of the space if any
 Arguments | Type    | Notes
 ----------|---------|---------
 
-*Returns* `Array[type:CitizenLite]` Array of the occupants of the space
+**Returns** `Array[type:CitizenLite]` Array of the occupants of the space
 
 ==========================================
 
@@ -413,7 +413,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `citizen` | `type:Citizen` | A citizen moving into the hex space
 
-*Returns* `boolean` Successful?
+**Returns** `boolean` Successful?
 
 ==========================================
 
@@ -424,7 +424,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `formerCitizen` | `type:Citizen` | A citizen leaving the hex space
 
-*Returns* `boolean` Successful?
+**Returns** `boolean` Successful?
 
 ==========================================
 
@@ -434,7 +434,7 @@ Reorients any occupants of the hex grid so that they overlap as little as possib
 Arguments | Type    | Notes
 ----------|---------|---------
 
-*Returns* void
+**Returns** void
 
 ==========================================
 
@@ -445,7 +445,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 name | `string` | The name of the new terrain feature to be instantiated
 
-*Returns* `type:PIXI.HexGrid.Terrain` the new terrain feature added
+**Returns** `type:PIXI.HexGrid.Terrain` the new terrain feature added
 
 ==========================================
 
@@ -456,7 +456,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 name | `string` | The name of the new terrain feature to be removed
 
-*Returns* `type:PIXI.HexGrid.Terrain` The terrain feature just removed
+**Returns** `type:PIXI.HexGrid.Terrain` The terrain feature just removed
 
 ==========================================
 
@@ -467,7 +467,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 
 
-*Returns* `type:HexSpaceLite` Represents this `HexSpace`
+**Returns** `type:HexSpaceLite` Represents this `HexSpace`
 
 ==========================================
 
@@ -478,7 +478,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 
 
-*Returns* `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the corresponding `PIXI.HexGrid.Terrain` object
+**Returns** `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the corresponding `PIXI.HexGrid.Terrain` object
 
 ==========================================
 
@@ -536,4 +536,4 @@ attributes | `object` | Client-specific object which describes attributes of thi
 layer | `string` | **Optional** Either `"overlay"` or `"underlay"`, indicating which layer the terrain's sprite should be put on
 maxOccupancyModifier | `number:Integer` | **Optional** modifier to the max occupancy of the hex gridspace
 
-*Returns* `PIXI.HexGrid.Terrain` for chaining
+**Returns** `PIXI.HexGrid.Terrain` for chaining
