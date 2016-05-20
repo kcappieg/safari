@@ -98,7 +98,7 @@ Keywords can be based on ENUMS declared as static variables somewhere...
 
 Class
 
-Main controller for combat engine. Holds references to all combatants. Implements spatial arrangement using `PIXI.HexGrid` extension.
+Main controller for combat engine. Holds references to all combatants. Implements spatial arrangement using `PIXI.HexGrid` extension of `PIXI`.
 
 ####Static Properties
 
@@ -121,9 +121,13 @@ Below properties are enums (integers) for different characteristics characters c
 
 ####Constructors
 
-#####new CombatEngine()
+#####`new CombatEngine([renderer])`
 
-No argument constructor.
+Creates a new instance of `CombatEngine`, optionally with the renderer to be used
+
+Arguments | Type    | Notes
+----------|---------|---------
+`renderer` | `type:PIXI.SystemRenderer` | **Optional** The renderer to be used as the view for battlefield combat.
 
 ####Methods
 
@@ -218,6 +222,20 @@ Arguments | Type    | Notes
 **Returns** `this`
 
 ###CombatEngine.Combatant
+
+==========================================
+
+#####`setRenderer(renderer)`
+
+Set the `PIXI.SystemRenderer` that will render the battlefield combats. Replaces any previous renderer set or passed to the constructor.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`renderer` | `type:PIXI.SystemRenderer` | Renderer (either WebGL or Canvas) which will render the views of the battlefield combats
+
+**Returns** `this`
+
+==========================================
 
 Class
 
