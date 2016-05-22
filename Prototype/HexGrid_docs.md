@@ -111,21 +111,22 @@ Arguments | Type    | Notes
 `x`   | `number:Integer` | x Coordinate
 `y`   | `number:Integer` | y Coordinate
 
-**Returns** `object` As the `HexLite` object returned from the `HexSpace.createHexLite()` method
+**Returns** `type:HexLite` object representing the hex space at the given coordinates
 
 ==========================================
 
-#####`distanceBetween(x1, y1, x2, y2)`
-Get the distance in hex space units between 2 spaces, identified by their grid coordinates
+#####`distanceBetween(gridX1, gridY1, gridX2, gridY2)`
+
+Get the distance in pixels between 2 `HexSpace`s, identified by their grid coordinates
 
 Arguments | Type    | Notes
 ----------|---------|---------
-x1 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the origin
-y1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the origin
-x2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which HexSpace is the destination
-y2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which HexSpace is the destination
+gridX1 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which `HexSpace` is the origin
+gridY1 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which `HexSpace` is the origin
+gridX2 | `number:Integer`| An integer within the bounds of the x-axis on the HexGrid which indicates which `HexSpace` is the destination
+gridY2 | `number:Integer`| An integer within the bounds of the y-axis on the HexGrid which indicates which `HexSpace` is the destination
 
-**Returns** `number:Integer` of distance between 2 spaces in hex space units
+**Returns** `number:Float` Distance between the `HexSpace`s in pixels
 
 ==========================================
 
@@ -139,7 +140,7 @@ gridY1 | `number:Integer`| The starting `HexSpace` y-coordinate of the origin
 gridX2 | `number:Integer`| The `HexSpace` x-coordinate of the destination
 gridY2 | `number:Integer`| The `HexSpace` y-coordinate of the destination
 
-**Returns** `ARRAY:Object` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
+**Returns** `ARRAY[type:HexLite]` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
 
 * `gridX`: `number:Integer` - Hex Grid x Coordinate 
 * `gridY`: `number:Integer` - Hex Grid y Coordinate
@@ -156,12 +157,24 @@ Add a citizen to the population of the `HexGrid`. The citizen construct is a way
 Arguments | Type    | Notes
 ----------|---------|---------
 `sprite`    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
-`name`      | `string` | name with which to register the sprite
+`name`      | `string` | name with which to register the `Citizen`
 `x`         | `number:Integer` | The starting `HexSpace` x-coordinate of the citizen
 `y`         | `number:Integer` | The starting `HexSpace` y-coordinate of the citizen
 `extAttributes` | `object` | **Optional** Freeform object. This object is not modified or manipulated by the hex grid, but could be useful for keeping track of your game element with the internal citizen construct.
 
 **Returns** `this`
+
+==========================================
+
+#####`removeCitizen(name)`
+
+Remove a previously registered citizen from the `HexGrid`'s population, also removing its sprite from the `citizenLayer`.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`name`      | `string` | name of a previously registered `Citizen`
+
+**Returns** `type:PIXI.DisplayObject` The sprite / display object of the citizen removed
 
 ==========================================
 

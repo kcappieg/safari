@@ -929,51 +929,60 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     Object.defineProperty(hexGridManager, "gridSprite", {
       value: gridSprite,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
     Object.defineProperty(hexGridManager, "grid", {
       value: stage,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
     Object.defineProperty(hexGridManager, "underLayer", {
       value: underLayer,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
     Object.defineProperty(hexGridManager, "citizenLayer", {
       value: citizenLayer,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
     Object.defineProperty(hexGridManager, "overLayer", {
       value: overLayer,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
 
     Object.defineProperty(hexGridManager, "hexRadius", {
       value: radius,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
 
     var dim = {};
     Object.defineProperty(dim, "gridX", {
       value: hexX,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
     Object.defineProperty(dim, "gridY", {
       value: hexY,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
 
     Object.defineProperty(hexGridManager, "dimensions", {
       value: dim,
       configurable: false,
-      writable: false
+      writable: false,
+      enumerable: true
     });
 
   //Methods
@@ -987,34 +996,45 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       return hex.getHexLite();
     }
 
-    hexGridManager.distanceBetween = function(x1, y1, x2, y2){
-      if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0 || x1 > this.dimensions.gridX || y1 > this.dimensions.gridY || x2 > this.dimensions.gridX || y2 > this.dimensions.gridY){
+    hexGridManager.distanceBetween = function(gridX1, gridY1, gridX2, gridY2){
+      if (gridX1 < 0 || gridY1 < 0 || gridX2 < 0 || gridY2 < 0 || gridX1 >= this.dimensions.gridX || gridY1 >= this.dimensions.gridY || gridX2 >= this.dimensions.gridX || gridY2 >= this.dimensions.gridY){
         throw new Error ("Out of bounds of grid");
       }
 
-      var xDist = Math.abs(x1 - x2);
-      var yDist = Math.abs(y1 - y2);
-      var totalDistance;
+      var hex1 = hexArray.getAt(gridX1, gridY1);
+      var hex2 = hexArray.getAt(gridX2, gridY2);
+      var squaredD = KdTree.squaredDistanceBetween(hex1.x, hex1.y, hex2.x, hex2.y);
 
-      if (isRotated) {
-        totalDistance = yDist + Math.max(0, xDist - 1);
-      } else {
-        totalDistance = xDist + Math.max(0, yDist - 1);
-      }
-      return totalDistance;
+      return Math.sqrt(squaredD);
     };
 
     hexGridManager.adjacentHexes = function(x, y){
       var adjacentHexArray = [];
-      for (var i=-1; i<=1; i++){
-        for (var k=-1; k<=1; k++){
-          try {
-            if (this.distanceBetween(x, y, x+i, y+k) === 1){
-              adjacentHexArray.push(hexArray.getAt(x+i, y+k));
-            }
-          } catch (e){}
+      var xM=x-1, xP=x+1, yM=y-1, yP=y+1;
+      var xMe=xM>=0, xPe=xP<this.dimensions.gridX, yMe=yM>=0, yPe=yP<this.dimensions.gridY;
+      if (xMe){adjacentHexArray.push(hexArray.getAt(xM, y).getHexLite());}
+      if (xPe){adjacentHexArray.push(hexArray.getAt(xP, y).getHexLite());}
+      if (yMe) {adjacentHexArray.push(hexArray.getAt(x, yM).getHexLite());}
+      if (yPe) {adjacentHexArray.push(hexArray.getAt(x, yP).getHexLite());}
+
+      if (!isRotated){
+        if (x % 2 === 0 && yPe){
+          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yP).getHexLite());}
+          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yP).getHexLite());}
+        } else if (x % 2 === 1 && yMe){
+          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yM).getHexLite());}
+          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yM).getHexLite());}
+        }
+      } else {
+        if (y % 2 === 0 && xMe){
+          if (yMe){adjacentHexArray.push(hexArray.getAt(xM, yM).getHexLite());}
+          if (yPe){adjacentHexArray.push(hexArray.getAt(xM, yP).getHexLite());}
+        } else if (y % 2 === 1 && xPe){
+          if (yMe){adjacentHexArray.push(hexArray.getAt(xP, yM).getHexLite());}
+          if (yPe){adjacentHexArray.push(hexArray.getAt(xP, yP).getHexLite());}
         }
       }
+      
       return adjacentHexArray;
     };
 

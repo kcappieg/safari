@@ -16,11 +16,13 @@ Combantants strategize based on enemy positions to plan their attacks. Each comb
  * Detects Enemies
  * Assesses capabilities
 2. Combatant chooses a target and course of action
- * Target is optional
+ * (Target is optional)
  * Move
  * Attack
  * Hide
  * Retreat
+ * Defend
+ * Do Nothing
 3. [INTERRUPT] During action, combatant can be interrupted. If so, return to step 1.
 4. Finish action
 5. Reassess
@@ -102,11 +104,11 @@ Main controller for combat engine. Holds references to all combatants. Implement
 
 ####Static Properties
 
-* `battlefieldTypes` - `object` Each property is a different type of battlefield complete with `PIXI.Texture` background textures, a list of every terrain type possibly found on the battlefield, and a function which is invoked for every hex space determining which terrain types are present on it.
+* `battlefieldTypes` - `object` Each property is a different type of battlefield complete with `PIXI.Texture` background texture, color for grid lines, a list of every terrain type possibly found on the battlefield, and a function which is invoked for every hex space determining which terrain types are present on it.
 
 #####Enums
 
-Below properties are enums (integers) for different characteristics characters can have
+Below properties are enums (`symbol`) for different characteristics characters can have
 
 * `MELEE`
 * `RANGED`
@@ -133,7 +135,7 @@ Arguments | Type    | Notes
 
 #####`addCombatant(name, combatant)`
 
-Adds a combatant to the `Combat Engine`, registering it with a unique name. Throws an error if the name is already registered.
+Adds a combatant to the `CombatEngine`, registering it with a unique name. Throws an error if the name is already registered.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -146,7 +148,7 @@ Arguments | Type    | Notes
 
 #####`removeCombatant(name)`
 
-Removes a combatant from the `Combat Engine`.
+Removes a combatant from the `CombatEngine`.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -156,7 +158,7 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`initializeBattleField(type, hexX, hexY, radius[, rotate])`
+#####`initializeBattlefield(type, hexX, hexY, radius[, rotate])`
 
 Initializes a battlefield at the specified dimensions and size. The type determines the kinds of terrain and background image for the battlefield.
 
@@ -168,18 +170,47 @@ Arguments | Type    | Notes
 `radius`    | `number:Integer` | Radius of each hex space in pixels
 `rotate`    | `boolean` | **Optional** Should the Hex Grid be rotated? This changes the orientation of the hex space. The `hexX` and `hexY` parameters will still be calculated from the user's perspective (i.e. the x and y axes won't be rotated)
 
-**Returns** `number:Integer` Integer identifier unique to this instance of `CombatEngine` which will identify the battlefield just created.
+**Returns** `symbol` Unique identifier for the battlefield just created.
 
 ==========================================
 
-#####`addCombatantToBattleField(name, battlefield)`
+#####`addCombatantToBattlefield(name, battlefield)`
+
+Add a registered `Combatant` to the battlefield.
 
 Arguments | Type    | Notes
 ----------|---------|---------
 `name` | `string` | Unique name of the combatant. Must be a combatant already registered with the `CombatEngine`
-`battleField` | `number:Integer` | Unique identifier for the battlefield.
+`battleField` | `symbol` | Unique identifier for the battlefield.
 
-**Returns** `object` - Includes a single method, `add(name)`, which takes the name (a `string`) of another combatant to add to the battlefield. This is meant for chaining.
+**Returns** `this` for chaining.
+
+**Note** A particular combatant can only be added to one battlefield at a time. If the combatant is already a member of another battlefield, this method will throw an error.
+
+==========================================
+
+#####`removeCombatantFromBattlefield(name, battlefield)`
+
+Remove a `Combatant` from a battlefield. If `Combatant` is not on this battlefield, does nothing.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`name` | `string` | Unique name of the combatant. Must be a combatant already added to the battlefield identified with `battlefield`
+`battleField` | `symbol` | Unique identifier for the battlefield.
+
+**Returns** `this` for chaining.
+
+==========================================
+
+#####`clearBattlefield(battlefield)`
+
+Clear all `Combatant`s from a battlefield.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`battleField` | `symbol` | Unique identifier for the battlefield.
+
+**Returns** `ARRAY[string]` Array of the names of all combatants removed from the battlefield
 
 ==========================================
 
@@ -189,18 +220,19 @@ Initiate the combat event loop for a particular battlefield. The battlefield is 
 
 Arguments | Type    | Notes
 ----------|---------|---------
-`battleField` | `number:Integer` | Unique identifier for the battlefield.
+`battleField` | `symbol` | Unique identifier for the battlefield.
 
-**Returns** `function` Interrupt function which pauses all game logic
+**Returns** `function` Play/pause function: when invoked, either pauses the game logic or resumes it depending on its previous state.
 
 ==========================================
 
-#####`onCombatFinish(fn)`
+#####`onCombatFinish(battlefield, fn)`
 
-Set a callback function to be run when combat finishes. This function is invoked when combat finishes for any battlefield.
+Set a callback function to be run when combat finishes. This function is invoked when combat finishes for a particluar battlefield.
 
 Arguments | Type    | Notes
 ----------|---------|---------
+`battleField` | `symbol` | Unique identifier for the battlefield.
 `fn` | `function` | Callback invoked when combat finishes. Takes arguments (described below)
 
 **Arguments passed to callback function `fn`**
@@ -211,17 +243,16 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`offCombatFinish([fn])`
+#####`offCombatFinish(battlefield[, fn])`
 
-Removes either a particular callback or all callback functions registered to fire when combat finishes.
+Removes either a particular callback or all callback functions registered to fire when combat finishes for a particluar battlefield.
 
 Arguments | Type    | Notes
 ----------|---------|---------
+`battleField` | `symbol` | Unique identifier for the battlefield.
 `fn` | `function` | **Optional** Callback which was previously registered using `onCombatFinish()`
 
 **Returns** `this`
-
-###CombatEngine.Combatant
 
 ==========================================
 
@@ -237,10 +268,105 @@ Arguments | Type    | Notes
 
 ==========================================
 
+###CombatEngine.Combatant
+
 Class
 
 Main combatant class instantiated for each combatant in an instance of `CombatEngine`. Combatants have many variable properties and attributes including physical / skill stats and behavioral algorithms which determine their decision-making in combat.
 
+####Static Methods
+
+#####`combatantBuilder()`
+
+Initializes combatant builder object used to construct a `Combatant` object
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+**Returns** `object` Builder object, described below
+
+######Builder Object Methods
+
+* `build()` - Builds the `Combatant` object and returns it
+* `hp(total)` - `total`: `number:Integer`; sets max and initial HP value
+* `
+
+####Constructors
+
+None. Uses Builder Pattern (see `combatantBuilder` above)
+
 ####Properties
+
+#####`maxHP`
+
+`number:Integer` **Read-only** Maximum HP; *Default: `1`*
+
+----------------------------
+
+#####`currentHP`
+
+`number:Integer` Current HP; *Default: value of `maxHP`*
+
+----------------------------
+
+#####`strength`
+
+`number:Integer` Strength score; *Default: `5`*
+
+----------------------------
+
+#####`endurance`
+
+`number:Integer` Endurance score; *Default: `5`*
+
+----------------------------
+
+#####`marksmanship`
+
+`number:Integer` Marksmanship score; *Default: `5`*
+
+----------------------------
+
+#####`influence`
+
+`number:Integer` Influence score; *Default: `5`*
+
+----------------------------
+
+#####`willfulness`
+
+`number:Integer` Willfulness score; *Default: `5`*
+
+----------------------------
+
+#####`perceptiveness`
+
+`number:Integer` Perceptiveness score; *Default: `5`*
+
+----------------------------
+
+#####`sneakiness`
+
+`number:Integer` Sneakiness score; *Default: `5`*
+
+----------------------------
+
+#####`speed`
+
+`number:Integer` Speed. Calculation is relative to pixels / second on a full scale map (scale = 1); *Default: `100`*
+
+----------------------------
+
+#####`defense`
+
+`number:Integer` Defense score; *Default: `10`*
+
+----------------------------
+
+#####`gear`
+
+`ARRAY[object]` Array of gear this combatant is carrying
+
+----------------------------
 
 ####Methods
