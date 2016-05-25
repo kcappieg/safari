@@ -538,7 +538,7 @@ Arguments | Type | Details
 
 ####Static Methods
 
-#####`PIXI.HexGrid.Terrain.registerNewType (name, texture, attributes[, layer][, maxOccupancyModifier])`
+#####`PIXI.HexGrid.Terrain.registerNewType(name, texture, attributes[, layer][, maxOccupancyModifier])`
 Registers a new type of terrain
 
 Arguments | Type    | Notes

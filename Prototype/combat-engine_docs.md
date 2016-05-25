@@ -102,9 +102,22 @@ Class
 
 Main controller for combat engine. Holds references to all combatants. Implements spatial arrangement using `PIXI.HexGrid` extension of `PIXI`.
 
-####Static Properties
+####Staic Methods
 
-* `battlefieldTypes` - `object` Each property is a different type of battlefield complete with `PIXI.Texture` background texture, color for grid lines, a list of every terrain type possibly found on the battlefield, and a function which is invoked for every hex space determining which terrain types are present on it.
+#####`registerBattlefieldType(type, texture, hexterrains[, gridLines])`
+
+Registers a battlefield type using the `data` object.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`type` | `string` | The name for the battlefield type you are registering.
+`texture` | `type:PIXI.Texture` | Texture to be used as the battlefield's background.
+`hexTerrains` | `function(hexLite)` | Takes a `HexLite` object (see `PIXI.HexGrid` docs). This function is invoked for every hex space on the grid with the primary goal of adding terrain features to the grid.
+`gridLines` | `string` | **Optional** Color string to be used for the grid lines of the battlefield. Defaults to `#000000`
+
+**Returns** `this`
+
+==========================================
 
 ####Constructors
 
@@ -159,7 +172,7 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`addCombatantToBattlefield(name, team, battlefield)`
+#####`addCombatantToBattlefield(name, battlefield, hexX, hexY)`
 
 Add a registered `Combatant` to the battlefield.
 
@@ -167,6 +180,8 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `name` | `string` | Unique name of the combatant. Must be a combatant already registered with the `CombatEngine`
 `battleField` | `symbol` | Unique identifier for the battlefield.
+`hexX` | `number:Integer` | The x-coordinate in hex spaces for the combatant to start on
+`hexY` | `number:Integer` | The y-coordinate in hex spaces for the combatant to start on
 
 **Returns** `this` for chaining.
 
@@ -190,6 +205,18 @@ Arguments | Type    | Notes
 #####`clearBattlefield(battlefield)`
 
 Clear all `Combatant`s from a battlefield.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`battleField` | `symbol` | Unique identifier for the battlefield.
+
+**Returns** `ARRAY[string]` Array of the names of all combatants removed from the battlefield
+
+==========================================
+
+#####`deleteBattlefield(battlefield)`
+
+Clear all `Combatant`s from a battlefield, then deletes it from the register.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -307,6 +334,18 @@ Arguments | Type    | Notes
 None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ####Properties
+
+#####`inCombat`
+
+`number:Integer` **Read-only** If this combatant is registered on a battlefield already, this value will be `-1`. Otherwise, it will be `>=0`
+
+----------------------------
+
+#####`sprite`
+
+`type:PIXI.DisplayContainer` **Read-only** The display container object (usually a sprite) associated with this combatant.
+
+----------------------------
 
 #####`maxHP`
 
