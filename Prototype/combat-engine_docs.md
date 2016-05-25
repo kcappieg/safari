@@ -106,21 +106,6 @@ Main controller for combat engine. Holds references to all combatants. Implement
 
 * `battlefieldTypes` - `object` Each property is a different type of battlefield complete with `PIXI.Texture` background texture, color for grid lines, a list of every terrain type possibly found on the battlefield, and a function which is invoked for every hex space determining which terrain types are present on it.
 
-#####Enums
-
-Below properties are enums (`symbol`) for different characteristics characters can have
-
-* `MELEE`
-* `RANGED`
-* `SNIPER`
-* `MEDIC`
-* `COMMANDER`
-* `WEAK`
-* `STRONG`
-* `SNEAKY`
-* `BRUTE`
-* `ARMORED`
-
 ####Constructors
 
 #####`new CombatEngine([renderer])`
@@ -174,7 +159,7 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`addCombatantToBattlefield(name, battlefield)`
+#####`addCombatantToBattlefield(name, team, battlefield)`
 
 Add a registered `Combatant` to the battlefield.
 
@@ -274,6 +259,32 @@ Class
 
 Main combatant class instantiated for each combatant in an instance of `CombatEngine`. Combatants have many variable properties and attributes including physical / skill stats and behavioral algorithms which determine their decision-making in combat.
 
+####Static Properties
+
+#####Enums
+
+Below properties are enums (`symbol`) for different characteristics characters can have
+
+* `MELEE`
+* `RANGED`
+* `SNIPER`
+* `MEDIC`
+* `COMMANDER`
+* `WEAK`
+* `STRONG`
+* `SNEAKY`
+* `BRUTE`
+* `ARMORED`
+* `NOTORIOUS`
+
+Below enums are static `symbol` objects used for gear slots
+
+* `HEAD`
+* `ARMOR`
+* `WEAPON1`
+* `WEAPON2`
+* `FEET`
+
 ####Static Methods
 
 #####`combatantBuilder()`
@@ -363,10 +374,197 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
-#####`gear`
+#####`backpackCapacity`
 
-`ARRAY[object]` Array of gear this combatant is carrying
+`number:Integer` Amount of items this character can carry.
+
+----------------------------
+
+#####`nextAction`
+
+**Note**: Private property, written here so I won't forget it. This should store the next action the character intends to do. For instance, if a melee character decides to attack a foe several spaces away, their in-progress action would be to move, and this property would store the action they intend to carry out when they arrive.
+
+----------------------------
+
+#####`team`
+
+`symbol` The team the combatant belongs to. All combatants of the same team must have the same `symbol` instance.
 
 ----------------------------
 
 ####Methods
+
+#####`registerMessage(message)`
+
+**Note** Private method.
+
+Registers a message with the combatant
+
+Arguments | Type    | Notes
+----------|---------|---------
+`message` | `type:Message` | Message object is internal class that indicates the sender of the message and the contents of the message, probably a function (TBD!)
+
+**Returns** void
+
+=====================================
+
+#####`sendMessage(fn, context, recipient)`
+
+Send a message to a recipient.
+
+**Note**: Message transfer protocol still TBD. Below is a first-pass.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`fn` | `function` | Function to be executed at the time specified by `context`. Generally, an information function which affects a character's likelihood to know something or detect someone, a filtering function (to filter the battlefield of potential targets) or function that returns a course of action.
+
+**Returns** void
+
+=====================================
+
+#####`addToBackback(item)`
+
+Add an item to combatant's backpack.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`item` | `object` | Object of any type. Any object counts as 1 unit in the backpack
+
+**Returns** `boolean` - If the backpack is full, returns `false` and does not add the item. Otherwise returns `true`
+
+=====================================
+
+#####`removeFromBackback(item)`
+
+Add an item to remove from combatant's backpack.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`item` | `object` | Object of any type. Any object counts as 1 unit in the backpack
+
+**Returns** `boolean` - If the item is in the backpack, returns `true`. Otherwise returns `false`.
+
+=====================================
+
+#####`getBackbackContents()`
+
+Get all contents of the backpack, but does not remove anything.
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+**Returns** `ARRAY[object]` Array of items this combatant is carrying.
+
+=====================================
+
+#####`getGear(slot)`
+
+Get the gear object from the slot indicated by `slot`
+
+Arguments | Type    | Notes
+----------|---------|---------
+`slot` | `symbol` | Static enum defined on this class which indicates a gear slot
+
+**Returns** `object` The gear object occupying that slot.
+
+=====================================
+
+#####`setGear(slot[, item])`
+
+Set `item` into gear `slot`. If `item` is undefined, removes whatever was equipped on that slot and returns it.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`slot` | `symbol` | Static enum defined on this class which indicates a gear slot
+`item` | `object` | **Optional** Object of the piece of gear you are setting
+
+**Returns** `object` The gear object that previously occupied that slot. `null` if none.
+
+=====================================
+
+#####`battlefieldSurveyStream()`
+
+Initialize a stream-like interface on which you can set behavioral functions which filter enemies from an array,
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+**Returns** `object` Object has 2 methods, `next()` and `finally()`
+
+######`next(fn)`
+
+Takes and sets a function to be called on the chain. The function takes an array (`enemies`) and filters it. Must call either `next()` or `resolve()` with the filtered array as an argument (i.e. `next(enemies)`) in order to continue or resolve the chain.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`fn` | `function` | Function with the below argument signature
+
+* `enemies`: `ARRAY[type:Combatant]` - Array of possible targets
+* `next`: `function` - Function which takes the filtered version of the `enemies` array and calls the next filtering function
+* `resolve`: `function` - Function which takes the filtered version of the `enemies` array and calls the final function in the chain, skipping any others not yet called
+
+**Returns** `this`
+
+######`finally(fn)`
+
+Takes and sets a function to be called as the last filtering method in the chain. This should reduce the array to a length of either 1 or 0. Function takes array (`enemies`) and filters it. Must return the filtered array.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`fn` | `function` | Function with the below argument signature
+
+* `enemies`: `ARRAY[type:Combatant]` - Array of possible targets
+
+**Returns** void
+
+=====================================
+
+#####`courseOfActionStream()`
+
+Initialize a stream-like interface on which you can set behavioral functions which determines the course of action the combatant will take.
+
+Arguments | Type    | Notes
+----------|---------|---------
+
+**Returns** `object` Object has 2 methods, `next()` and `finally()`
+
+######`next(fn)`
+
+Takes and sets a function to be called on the chain. Arguments and actions of the function TBD. Must call either `next()` or `resolve()` in order to continue or resolve the chain.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`fn` | `function` | Function with the below argument signature
+
+* `TBD`: 
+* `next`: `function` - Function which calls the next behavioral function
+* `resolve`: `function` - Function which calls the final function in the chain, skipping any others not yet called
+
+**Returns** `this`
+
+######`finally(fn)`
+
+Takes and sets a function to be called as the last behavioral function in the chain. This function should somehow return the course of action to be taken (TBD)
+
+Arguments | Type    | Notes
+----------|---------|---------
+`fn` | `function` | Function with the below argument signature
+
+* `TBD`:
+
+**Returns** void
+
+=====================================
+
+#####`act(action, data)`
+
+Take a course of action in the context of `data`
+
+Arguments | Type    | Notes
+----------|---------|---------
+`action` | `symbol` | The action the character intends to take
+`data` | `object` | Object containing the contextual data necessary to execute the action. Described below
+
+**Returns** `function` Interrupt function. Calling it interrupts the action and forces the character to begin again at the beginning of the assessment cycle.
+
+=====================================
