@@ -359,7 +359,7 @@ As the `Citizen` class with the below properties and methods. (Descriptions prov
 
 * `facing`
 * `moving`
-* `currentHex`
+* `currentHex` - `type:HexSpaceLite`
 * `sprite`
 * `name`
 * `attributes` - `object` The `extAttributes` object passed to the constructor.

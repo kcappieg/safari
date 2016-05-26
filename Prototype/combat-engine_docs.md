@@ -210,7 +210,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `battleField` | `symbol` | Unique identifier for the battlefield.
 
-**Returns** `ARRAY[string]` Array of the names of all combatants removed from the battlefield
+**Returns** `ARRAY[type:Combatant]` Array of the combatants removed from the battlefield
 
 ==========================================
 
@@ -222,7 +222,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `battleField` | `symbol` | Unique identifier for the battlefield.
 
-**Returns** `ARRAY[string]` Array of the names of all combatants removed from the battlefield
+**Returns** `ARRAY[type:Combatant]` Array of the combatants removed from the battlefield
 
 ==========================================
 
@@ -337,7 +337,7 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 #####`inCombat`
 
-`number:Integer` **Read-only** If this combatant is registered on a battlefield already, this value will be `-1`. Otherwise, it will be `>=0`
+`boolean` **Read-only** Is this combatant registered on a battlefield already?
 
 ----------------------------
 
@@ -592,6 +592,22 @@ Arguments | Type    | Notes
 * `TBD`:
 
 **Returns** void
+
+=====================================
+
+#####`assess(hexGridManager)`
+
+Private method. Assess a battlefield
+
+Arguments | Type    | Notes
+----------|---------|---------
+`hexGridManager` | `type:HexGridManager` | The HexGridManager object for the battlefield to be assessed. It is expected that this Combatant has been added to the HexGridManager
+
+**Returns** void
+
+######Implementation Notes
+
+This method is private
 
 =====================================
 

@@ -33,6 +33,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     this.deleteBattlefield = (battlefield) => {
       let r = this.clearBattlefield(battlefield);
       battlefields[battlefield].grid.destory(true);
+      battlefields[battlefield] = undefined;
       return r;
     };
     this.setRenderer = (newRenderer) => {renderer = newRenderer; return this;};
@@ -43,13 +44,25 @@ define(["./pixi-hexgrid"], function(PIXI){
   }
 
   function initiateCombatTop(hgm, renderer){
+    let go = true;
     function animate (){
-      requestAnimationFrame(animate);
+      while (go){
+        requestAnimationFrame(animate);
 
-      renderer.render(hgm.grid);
+        for (let name in hgm.combatants) {
+          assess.call(hgm.combatants[name], hgm);
+        }
+
+        renderer.render(hgm.grid);
+      }
     }
 
-    return //some interrupt function!!!
+    requestAnimationFrame(animate);
+
+    return function(){
+      if (go){go = !go;}
+      else {go = true; requestAnimationFrame(animate);}
+    }
   }
 
   function initializeBattlefieldTop (type, hexX, hexY, radius, rotate, battlefields){
@@ -65,8 +78,8 @@ define(["./pixi-hexgrid"], function(PIXI){
       hgm.grid.addChildAt(background, 0);
     }
 
-  //initialize an array into which combatants can be pushed when they occupy that battlefield
-    hgm.combatants = [];
+  //initialize a hash map into which combatants can be added when they occupy that battlefield
+    hgm.combatants = {};
   //initialize callback array for combat finish
     hgm.onCombatFinish = [];
 
@@ -100,27 +113,27 @@ define(["./pixi-hexgrid"], function(PIXI){
 
     hgm.addCitizen(combatant.sprite, name, hexX, hexY, combatant);
 
-    combatant.inCombat = privateSetter(hgm.combatants.push(name)-1);
+    hgm.combatants[name] = combatant;
+
+    combatant.inCombat = privateSetter(true);
   }
 
   function removeCombatantFrombattlefieldTop(name, combatant, hgm) {
     hgm.removeCitizen(name);
 
-    hgm.combatants[combatant.inCombat] = undefined;
-    combatant.inCombat = privateSetter(-1);
+    hgm.combatants[name] = undefined;
+    combatant.inCombat = privateSetter(false);
   }
 
   function clearBattlefieldTop(hgm, combatants){
     let r = [];
-    hgm.combatants.forEach(el){
-      if (el){
-        hgm.removeCitizen(el);
-        combatants[el].inCombat = privateSetter(-1);
-        r.push(el);
-      }
+    for (let name in hgm.combatants){
+      r.push(hgm.combatants[name]);
+      hgm.combatants.inCombat = privateSetter(false);
+      hgm.removeCitizen(name);
     }
 
-    hgm.combatants = [];
+    hgm.combatants = {};
     return r;
   }
 
@@ -158,15 +171,65 @@ define(["./pixi-hexgrid"], function(PIXI){
   };
 
   CombatEngine.Combatant = function(){
-    let inCombat = -1;
+    let inCombat = false;
+    let target = null;
+    let preAssessMessages = [];
+    let assessMessages = [];
+    let assessStream = [];
+    let finalAssessment = defaultFinalAssessment;
 
+    this.detectionModifiers = {};
+    this.influenceModifiers = {};
+
+  //privately settable properties
     Object.defineProperty(this, "inCombat", {
-      configurable: false,
       enumerable: true,
       get: () => inCombat,
       set: (newVal) => {if (newVal.i !== internal){return inCombat;} inCombat = newVal.n; return inCombat;}
-    })
+    });
+    Object.defineProperty(this, "target", {
+      enumerable: true,
+      get: () => target;
+      set: (newVal) => {if (newVal.i !== internal){return target;} target = newVal.n; return target;}
+    });
   };
+
+  function defaultFinalAssessment (enemies){
+    if (enemies.length < 2){
+      return enemies;
+    }
+
+    let randomEnemy =  Math.floor(Math.random() * (enemies.length));
+
+    return [enemies[randomEnemy]];
+  }
+
+/** Below takes will and influence and outputs a boolean of whether the target is influenced
+ **
+ ** @param will - The integer value of the target's will against this influence
+ ** @param influence - The integer value of the target's influence for this message
+ **
+ ** @returns boolean - is the target successfully influenced? i.e. do they run the message function
+ */
+  function isInfluenced(will, influence){
+
+  }
+
+/** This is one of 2 big game logic functions. Assess is called (.call) with a combatant.
+ ** It surveys all enemies and all messages, and from there chooses a target. The target can be
+ ** either a fellow combatant or a grid space.
+ **
+ ** Side effects include setting bonuses or penalties to detecting particular enemies, and also setting the target property
+ **
+ ** @param hgm - HexGridManager object for the battlefield on which the combatant is engaging. This
+ ** object also has the custom 'combatants' array, which is how a given game character can locate
+ ** and assess all enemies efficiently
+ **
+ ** @returns void
+ */
+  function assess (hgm){
+
+  }
 
   return CombatEngine;
 });
