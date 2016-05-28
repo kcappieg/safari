@@ -354,6 +354,18 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
+#####`detectionModifiers`
+
+`type:Map` **Read-only** The `Map` object whose keys should be `string`s of the names of other `Combatants`, and whose values should be integer modifiers. This `Map` is cleared after every assessment cycle.
+
+----------------------------
+
+#####`influenceModifiers`
+
+`type:Map` **Read-only** The `Map` object whose keys should be `string`s of the names of other `Combatants`, and whose values should be integer modifiers.
+
+----------------------------
+
 #####`maxHP`
 
 `number:Integer` Maximum HP; *Default: `1`*
@@ -635,6 +647,20 @@ Arguments | Type    | Notes
 
 =====================================
 
+#####`loop(hexGridManager)`
+
+Loops through a characters assessment and action. If the character is already engaged in an action, there may be no result.
+
+Will check on any interrupts registered (including messages).
+
+Arguments | Type    | Notes
+----------|---------|---------
+`hexGridManager` | `type:HexGridManager` | The HexGridManager object for the battlefield to be assessed. It is expected that this Combatant has been added to the HexGridManager
+
+**Returns** void
+
+=====================================
+
 #####`assess(hexGridManager)`
 
 Private method. Assess a battlefield
@@ -643,11 +669,37 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `hexGridManager` | `type:HexGridManager` | The HexGridManager object for the battlefield to be assessed. It is expected that this Combatant has been added to the HexGridManager
 
-**Returns** void
+**Returns** `ARRAY:[type:CombatEngine.Combatant]` An array of one or 0 `Combatant` objects indicating either the target chosen or that no target was chosen.
+
+=====================================
+
+#####`detectCombatants(hexGridManager)`
+
+Discovers the enemy combatants that this combatant can detect. Algorithm is based on any modifiers previously applied and distance from the target.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`hexGridManager` | `type:HexGridManager` | The HexGridManager object for the battlefield to be assessed. It is expected that this Combatant has been added to the HexGridManager
+
+**Returns** `ARRAY:[type:CombatEngine.Combatant]` An array of the combatants that a combatant can detect and so choose from as a target.
 
 ######Implementation Notes
+The calculated modifier is directly proportional to the distance in pixels between the combatants and indirectly proportional to the radii in pixels of the HexSpaces on the grid
 
-This method is private
+=====================================
+
+#####`chainRouter(chainType[, dataArray])`
+
+Executes a chain of responsibility for one of the different chain types (ie messages or assessments), optionally passing a data array on which to act depending on the chain. Returns the resulting data array, or undefined if none.
+
+This method should only be invoked privately.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`chainType` | `symbol` | The Symbol enum delcared on the `CombatEngine.Combatant` class which will identify the chain to be used.
+`dataArray` | `ARRAY[object]` | The data array on which the chain should act.
+
+**Returns** `ARRAY:[object]` / `undefined` - Either the data array that was acted upon by the chain or `undefined` if no `dataArray` was passed.
 
 =====================================
 

@@ -431,7 +431,7 @@ define(["./pixi-hexgrid"], function(PIXI){
       const distance = hgm.distanceBetween(thisHex.gridX, thisHex.gridY, targetHex.gridX, targetHex.gridY);
 
       const currentModifier = this.detectionModifiers.get(c.name);
-      this.detectionModifiers.set(c.name, currentModifier + Math.floor((distance / radius) * 5 - 50));
+      this.detectionModifiers.set(c.name, currentModifier - Math.floor((distance / radius) * 5 - 50));
     }
   //then: Using modifiers from the map and a random modifier, filter the targets array to only those the Combatant detects, and return the filtered array
     return targets.filter(detectionFilter, this);
@@ -468,6 +468,8 @@ define(["./pixi-hexgrid"], function(PIXI){
     remainingTargets = this.chainRouter(CombatEngine.Combatant.ASSESS, remainingTargets);
 
     this.detectionModifiers.clear();
+
+    return remainingTargets;
   }
 
   CombatEngine.Combatant.prototype.loop = function(hgm){
