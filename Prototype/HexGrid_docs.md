@@ -59,6 +59,11 @@ This is the main controller class of the HexGrid paradigm. The methods on this c
 
 ------------------------------------------------------
 
+#####`ticker`
+`type:PIXI.Ticker` **Read-only** The central ticker object that controls animations that take place through the `hexGridManager` interface. All animations can be controlled with his ticker object. Be careful about calling `ticker.remove()`, as removing all animation functions registered might interrupt grid logic and compromise the integrity of the contracts (like which grid spaces citizens occupy, etc).
+
+------------------------------------------------------
+
 #####`gridSprite`
 `type:PIXI.Sprite` **Read-only** The sprite object of the background grid. Added to `grid` first.
 
