@@ -1,2 +1,2 @@
 # Safari
-Browser-based game using Pixie.js
+Browser-based game using Pixi.js

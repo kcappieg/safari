@@ -312,6 +312,13 @@ Below enums are static `symbol` objects used for gear slots
 * `WEAPON2`
 * `FEET`
 
+Below enums are static `symbol` stream types
+
+* `preAssessMessage`
+* `assessMessage`
+* `assess`
+* `TBD`
+
 ####Static Methods
 
 #####`combatantBuilder()`
@@ -349,7 +356,7 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 #####`maxHP`
 
-`number:Integer` **Read-only** Maximum HP; *Default: `1`*
+`number:Integer` Maximum HP; *Default: `1`*
 
 ----------------------------
 
@@ -431,6 +438,12 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
+#####`name`
+
+`string` **Read-Only** The name of the combatant that was registered with the CombatEngine. The instance of `CombatEngine` internally sets this to prevent overriding the name of a combatant mistakenly.
+
+----------------------------
+
 ####Methods
 
 #####`registerMessage(message)`
@@ -458,6 +471,11 @@ Arguments | Type    | Notes
 `fn` | `function` | Function to be executed at the time specified by `context`. Generally, an information function which affects a character's likelihood to know something or detect someone, a filtering function (to filter the battlefield of potential targets) or function that returns a course of action.
 
 **Returns** void
+
+######Implementation Notes
+
+* PreAssess messages are passed 2 objects: `detectionModifiers` and `influenceModifiers`. Each object is expected to have enumerable properties whose names are the names of other combatants, and whose values are either positive or negative integers indicating modifiers.
+
 
 =====================================
 

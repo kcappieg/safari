@@ -170,4 +170,7 @@ requirejs(['./pixi-hexgrid'], function(PIXI){
 
   requestAnimationFrame(animate);
   dev.hgm = hexGridManager;
+  dev.fireBow = fireBow;
+  dev.fireBowInterrupt = fireBowInterrupt;
+  dev.neverStop = neverStop;
 });

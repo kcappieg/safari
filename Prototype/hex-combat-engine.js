@@ -146,6 +146,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     }
 
     combatants[name] = combatant;
+    combatant.name = privateSetter(name);
   };
 
   function removeCombatantTop (name, combatants){
@@ -154,6 +155,7 @@ define(["./pixi-hexgrid"], function(PIXI){
       }
       let c = combatants[name];
       combatants[name] = undefined;
+      c.name = privateSetter("");
       return c;
     };
 
@@ -181,18 +183,154 @@ define(["./pixi-hexgrid"], function(PIXI){
     this.detectionModifiers = {};
     this.influenceModifiers = {};
 
+    this.streamFactory = function(streamType, combatnats){
+      const combatantsCopy = [];
+      for (let i=0; i<hgm.combatants; i++){
+        combatantsCopy[i] = combatants[i];
+      }
+
+      switch (streamType){
+        case CombatEngine.Combatant.PREASSESSMESSAGE:
+          return streamGenerator.call(this, preAssessMessages);
+          break;
+        case CombatEngine.Combatant.ASSESSMESSAGE:
+          return streamGenerator.call(this, assessMessages, [combatantsCopy]);
+          break;
+        case CombatEngine.Combatant.ASSESS:
+          return streamGenerator.call(this, assessStream, [combatantsCopy]);
+          break;
+      }
+    };
+
+  //"type-safe" instance variables
+    let team = Symbol("defaultTeam");
+    Object.defineProperty(this, "team", {
+      enumerable: true,
+      get: () => team,
+      set: (newVal) => {if (typeof newVal === "symbol"){team = newVal;} return team;}
+    });
+    let name;
+    Object.defineProperty(this, "name", {
+      enumerable: true,
+      get: () => name,
+      set: (newVal) => {if (newVal.i === internal){name = newVal.n;} return name;}
+    });
+    let sprite = null;
+    Object.defineProperty(this, "sprite", {
+      enumerable: true,
+      get: () => sprite,
+      set: (newVal) => {if (newVal.i === internal){sprite = newVal.n;} return sprite;}
+    });
+    let maxHP = 1;
+    Object.defineProperty(this, "maxHP", {
+      enumerable: true,
+      get: () => maxHP,
+      set: (newVal) => {if (typeof newVal === "number"){maxHP = newVal;} return maxHP;}
+    });
+    let currentHP = undefined;
+    Object.defineProperty(this, "currentHP", {
+      enumerable: true,
+      get: () => currentHP,
+      set: (newVal) => {if (typeof newVal === "number"){currentHP = newVal;} return currentHP;}
+    });
+    let strength = 5;
+    Object.defineProperty(this, "strength", {
+      enumerable: true,
+      get: () => strength,
+      set: (newVal) => {if (typeof newVal === "number"){strength = newVal;} return strength;}
+    });
+    let endurance = 5;
+    Object.defineProperty(this, "endurance", {
+      enumerable: true,
+      get: () => endurance,
+      set: (newVal) => {if (typeof newVal === "number"){endurance = newVal;} return endurance;}
+    });
+    let marksmanship = 5;
+    Object.defineProperty(this, "marksmanship", {
+      enumerable: true,
+      get: () => marksmanship,
+      set: (newVal) => {if (typeof newVal === "number"){marksmanship = newVal;} return marksmanship;}
+    });
+    let influence = 5;
+    Object.defineProperty(this, "influence", {
+      enumerable: true,
+      get: () => influence,
+      set: (newVal) => {if (typeof newVal === "number"){influence = newVal;} return influence;}
+    });
+    let willfulness = 5;
+    Object.defineProperty(this, "willfulness", {
+      enumerable: true,
+      get: () => willfulness,
+      set: (newVal) => {if (typeof newVal === "number"){willfulness = newVal;} return willfulness;}
+    });
+    let perceptiveness = 5;
+    Object.defineProperty(this, "perceptiveness", {
+      enumerable: true,
+      get: () => perceptiveness,
+      set: (newVal) => {if (typeof newVal === "number"){perceptiveness = newVal;} return perceptiveness;}
+    });
+    let sneakiness = 5;
+    Object.defineProperty(this, "sneakiness", {
+      enumerable: true,
+      get: () => sneakiness,
+      set: (newVal) => {if (typeof newVal === "number"){sneakiness = newVal;} return sneakiness;}
+    });
+    let speed = 100;
+    Object.defineProperty(this, "speed", {
+      enumerable: true,
+      get: () => speed,
+      set: (newVal) => {if (typeof newVal === "number"){speed = newVal;} return speed;}
+    });
+    let defense = 10;
+    Object.defineProperty(this, "defense", {
+      enumerable: true,
+      get: () => defense,
+      set: (newVal) => {if (typeof newVal === "number"){defense = newVal;} return defense;}
+    });
+    let backpackCapacity = 0;
+    Object.defineProperty(this, "backpackCapacity", {
+      enumerable: true,
+      get: () => backpackCapacity,
+      set: (newVal) => {if (typeof newVal === "number"){backpackCapacity = Math.floor(newVal);} return backpackCapacity;}
+    });
+
   //privately settable properties
     Object.defineProperty(this, "inCombat", {
       enumerable: true,
       get: () => inCombat,
-      set: (newVal) => {if (newVal.i !== internal){return inCombat;} inCombat = newVal.n; return inCombat;}
+      set: (newVal) => {if (newVal.i === internal){inCombat = newVal.n;} return inCombat;}
     });
     Object.defineProperty(this, "target", {
       enumerable: true,
       get: () => target;
-      set: (newVal) => {if (newVal.i !== internal){return target;} target = newVal.n; return target;}
+      set: (newVal) => {if (newVal.i === internal){target = newVal.n;} return target;}
     });
   };
+
+//ENUMs
+  //Trait ENUMs
+  CombatEngine.Combatant.MELEE = Symbol();
+  CombatEngine.Combatant.RANGED = Symbol();
+  CombatEngine.Combatant.SNIPER = Symbol();
+  CombatEngine.Combatant.COMMANDER = Symbol();
+  CombatEngine.Combatant.WEAK = Symbol();
+  CombatEngine.Combatant.STRONG = Symbol();
+  CombatEngine.Combatant.SNEAKY = Symbol();
+  CombatEngine.Combatant.BRUTE = Symbol();
+  CombatEngine.Combatant.ARMORED = Symbol();
+  CombatEngine.Combatant.NOTORIOUS = Symbol();
+
+  //Gear ENUMs
+  CombatEngine.Combatant.HEAD = Symbol();
+  CombatEngine.Combatant.ARMOR = Symbol();
+  CombatEngine.Combatant.WEAPON1 = Symbol();
+  CombatEngine.Combatant.WEAPON2 = Symbol();
+  CombatEngine.Combatant.FEET = Symbol();
+
+  //Stream ENUMs
+  CombatEngine.Combatant.PREASSESSMESSAGE = Symbol();
+  CombatEngine.Combatant.ASSESSMESSAGE = Symbol();
+  CombatEngine.Combatant.ASSESS = Symbol();
 
   function defaultFinalAssessment (enemies){
     if (enemies.length < 2){
@@ -204,6 +342,18 @@ define(["./pixi-hexgrid"], function(PIXI){
     return [enemies[randomEnemy]];
   }
 
+//meant to be 'call()'ed with the combatant object
+  function* streamGenerator(stream, arguments){
+    let args;
+    let argsForStream = arguments
+    for (let i=0;i<stream.length;i++){
+      if (args !== undefined){
+        argsForStream = args;
+      }
+      args = yield stream[i].apply(this, argsForStream);
+    }
+  }
+
 /** Below takes will and influence and outputs a boolean of whether the target is influenced
  **
  ** @param will - The integer value of the target's will against this influence
@@ -212,7 +362,9 @@ define(["./pixi-hexgrid"], function(PIXI){
  ** @returns boolean - is the target successfully influenced? i.e. do they run the message function
  */
   function isInfluenced(will, influence){
-
+    //for now, just return true.
+    //TODO: come up with an algorithm here
+    return true;
   }
 
 /** This is one of 2 big game logic functions. Assess is called (.call) with a combatant.
@@ -227,8 +379,34 @@ define(["./pixi-hexgrid"], function(PIXI){
  **
  ** @returns void
  */
-  function assess (hgm){
+  CombatEngine.Combatant.prototype.assess = function (hgm){
+    let stream, iteration, remainingTargets;
 
+  //pre-message stream
+  //works by applying side effects to the character's state
+    stream = this.streamFactory(CombatEngine.Combatant.PREASSESSMESSAGE);
+    iteration = stream.next();
+    while (!iteration.done){
+      iteration = stream.next();
+    }
+
+  //message stream
+  //Expects the message stream to return the array of the potential enemies to target
+    stream = this.streamFactory(CombatEngine.Combatant.ASSESSMESSAGE, hgm.combatants);
+    iteration = stream.next();
+    while (!iteration.done){
+      remainingTargets = iteration.value;
+      iteration = stream.next(remainingTargets);
+    }
+
+  //assess stream
+  //Expects the assess stream to return the array of the remaining potential enemies to target
+    stream = this.streamFactory(CombatEngine.Combatant.ASSESS, remainingTargets);
+    iteration = stream.next();
+    while(!iteration.done){
+      remainingTargets = iteration.value;
+      iteration = stream.next(remainingTargets);
+    }
   }
 
   return CombatEngine;
