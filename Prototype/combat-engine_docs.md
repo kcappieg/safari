@@ -112,7 +112,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `type` | `string` | The name for the battlefield type you are registering.
 `texture` | `type:PIXI.Texture` | Texture to be used as the battlefield's background.
-`hexTerrains` | `function(hexLite)` | Takes a `HexLite` object (see `PIXI.HexGrid` docs). This function is invoked for every hex space on the grid with the primary goal of adding terrain features to the grid.
+`hexTerrains` | `function(hexLite)` | Takes a `HexLite` object (see `PIXI.HexGrid` docs). This function is invoked for every hex space on the grid with the primary goal of adding terrain features to the grid. It should return an array of strings, each of which is the name of a previously-registered terrain type (registered with the `PIXI.HexGrid.Terrain` object in `PIXI.HexGrid` docs)
 `gridLines` | `string` | **Optional** Color string to be used for the grid lines of the battlefield. Defaults to `#000000`
 
 **Returns** `this`
@@ -314,9 +314,9 @@ Below enums are static `symbol` objects used for gear slots
 
 Below enums are static `symbol` stream types
 
-* `preAssessMessage`
-* `assessMessage`
-* `assess`
+* `PREASSESSMESSAGE`
+* `ASSESSMESSAGE`
+* `ASSESS`
 * `TBD`
 
 ####Static Methods
@@ -444,6 +444,28 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
+#####`detectionModifiers`
+
+`Map` **Read-Only** The reference to this variable cannot be changed, but the map itself is mutable. Stores modifiers to detecting other characters on the battlefield. Key-value pairs should be names of combatants (strings) as keys and numbers as values.
+
+This map is cleared (using `Map.clear()`) after the assessment stage of the Combatant's decision loop.
+
+----------------------------
+
+#####`influenceModifiers`
+
+`Map` **Read-Only** The reference to this variable cannot be changed, but the map itself is mutable. Stores modifiers to the influence other game characters have on this character. Key-value pairs should be names of combatants (strings) as keys and numbers as values.
+
+This map is cleared (using `Map.clear()`) after the choose-an-action stage of the Combatant's decision loop.
+
+----------------------------
+
+#####`name`
+
+`string` **Read-Only** The name of the combatant that was registered with the CombatEngine. The instance of `CombatEngine` internally sets this to prevent overriding the name of a combatant mistakenly.
+
+----------------------------
+
 ####Methods
 
 #####`registerMessage(message)`
@@ -546,19 +568,19 @@ Initialize a stream-like interface on which you can set behavioral functions whi
 Arguments | Type    | Notes
 ----------|---------|---------
 
-**Returns** `object` Object has 2 methods, `next()` and `finally()`
+**Returns** `object` Object has 2 methods, `then()` and `finally()`
 
-######`next(fn)`
+######`then(fn)`
 
 Takes and sets a function to be called on the chain. The function takes an array (`enemies`) and filters it. Must call either `next()` or `resolve()` with the filtered array as an argument (i.e. `next(enemies)`) in order to continue or resolve the chain.
 
 Arguments | Type    | Notes
 ----------|---------|---------
-`fn` | `function` | Function with the below argument signature
+`fn` | `function` | Function with the below argument signature. It is called in the context of the combatant
 
-* `enemies`: `ARRAY[type:Combatant]` - Array of possible targets
 * `next`: `function` - Function which takes the filtered version of the `enemies` array and calls the next filtering function
 * `resolve`: `function` - Function which takes the filtered version of the `enemies` array and calls the final function in the chain, skipping any others not yet called
+* `enemies`: `ARRAY[type:Combatant]` - Array of possible targets
 
 **Returns** `this`
 

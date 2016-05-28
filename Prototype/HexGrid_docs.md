@@ -103,7 +103,7 @@ Arguments | Type    | Notes
 
 ==========================================
 
-#####`hex(x, y)`
+#####`hexAt(x, y)`
 Returns the `HexLite` object that contains the point at (x, y)
 
 Arguments | Type    | Notes
@@ -112,6 +112,17 @@ Arguments | Type    | Notes
 `y`   | `number:Integer` | y Coordinate
 
 **Returns** `type:HexLite` object representing the hex space at the given coordinates
+
+==========================================
+
+#####`getAllHexSpaces()`
+Returns all `HexLite` objects on this grid
+
+Arguments | Type    | Notes
+----------|---------|---------
+NONE
+
+**Returns** `ARRAY[type:HexLite]` array of all `HexLite` objects occupying this grid
 
 ==========================================
 
@@ -211,7 +222,7 @@ x         | `integer` | The destination `HexSpace` x-coordinate of the citizen
 y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
 time      | `integer` | Optional The amount of time (in miliseconds) to take to get from the starting position to the end position. Must be > 0
 animation | `function` | **Optional** Function that will be executed on each animation frame during the movement. Arguments to the function described below.
-endAnimation | `function` | **Optional** If an `animation` function was passed, this function will be executed at the end of the movement. Arguments to the function described below.
+endAnimation | `function` | **Optional** If an `animation` function was passed, this function will be executed at the end of the movement. Arguments to the function described below. Note: this function is called *after* a citizen has occupied a grid space. If your citizen should have affects based on the terrain they are in, they can be applied in this `endAnimation` function.
 
 ######Arguments to `animation()`
 
@@ -297,7 +308,7 @@ Arguments | Type | Details
 `type:HexSpace`: The current `HexSpace` that the citizen is occupying
 
 #####`sprite`
-`type:PIXI.Container`: The PIXI container object, usually `PIXI.Sprite`, which represents this citizen
+`type:PIXI.DisplayObject`: The PIXI container object, usually `PIXI.Sprite`, which represents this citizen
 
 #####`name`
 `string`: The name this citizen was registered with. Must be unique in the `HexGrid`.

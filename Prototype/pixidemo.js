@@ -3,6 +3,7 @@ requirejs(['./pixi-hexgrid'], function(PIXI){
   "use strict";
   var hexGridManager = PIXI.HexGrid.initializeHexGrid(20, 15, 30, true);
   var stage = hexGridManager.grid;
+  hexGridManager.ticker.start();
   //var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0x66ff99});
   var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff, antialias: true});
   document.body.appendChild(renderer.view);

@@ -50,7 +50,7 @@ define(["./pixi-hexgrid"], function(PIXI){
         requestAnimationFrame(animate);
 
         for (let name in hgm.combatants) {
-          assess.call(hgm.combatants[name], hgm);
+          hgm.combatants[name].loop(hgm);
         }
 
         renderer.render(hgm.grid);
@@ -76,6 +76,14 @@ define(["./pixi-hexgrid"], function(PIXI){
     if (bT.texture) {
       let background = new PIXI.Sprite(bT.texture);
       hgm.grid.addChildAt(background, 0);
+    }
+    if (bT.hexTerrains) {
+      hgm.getAllHexSpaces().forEach(function(hs){
+        var t = bT.hexTerrains.call(undefined, hs);
+        t.forEach(function(name){
+          hgm.addTerrain(hs.gridX, hs.gridY, name);
+        });
+      });
     }
 
   //initialize a hash map into which combatants can be added when they occupy that battlefield
@@ -175,32 +183,34 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.Combatant = function(){
     let inCombat = false;
     let target = null;
-    let preAssessMessages = [];
-    let assessMessages = [];
-    let assessStream = [];
+    let preAssessMessageChain = [];
+    let assessMessageChain = [];
+    let assessChain = [];
     let finalAssessment = defaultFinalAssessment;
 
-    this.detectionModifiers = {};
-    this.influenceModifiers = {};
-
-    this.streamFactory = function(streamType, combatnats){
-      const combatantsCopy = [];
-      for (let i=0; i<hgm.combatants; i++){
-        combatantsCopy[i] = combatants[i];
-      }
-
-      switch (streamType){
+    this.chainRouter = function(chainType, dataArray){
+      switch (chainType){
         case CombatEngine.Combatant.PREASSESSMESSAGE:
-          return streamGenerator.call(this, preAssessMessages);
+          return chainCaller.call(this, preAssessMessageChain); //returns undefined
           break;
         case CombatEngine.Combatant.ASSESSMESSAGE:
-          return streamGenerator.call(this, assessMessages, [combatantsCopy]);
+          return chainCaller.call(this, assessMessageChain, undefined, dataArray); //returns the filtered data array
           break;
         case CombatEngine.Combatant.ASSESS:
-          return streamGenerator.call(this, assessStream, [combatantsCopy]);
+          return chainCaller.call(this, assessChain, finalAssessment, dataArray); //returns the filtered data array
           break;
       }
     };
+
+  //read-only properties
+    Object.defineProperty(this, "detectionModifiers", {
+      value: new Map(),
+      enumerable: true
+    });
+    Object.defineProperty(this, "influenceModifiers", {
+      value: new Map(),
+      enumerable: true
+    });
 
   //"type-safe" instance variables
     let team = Symbol("defaultTeam");
@@ -342,18 +352,6 @@ define(["./pixi-hexgrid"], function(PIXI){
     return [enemies[randomEnemy]];
   }
 
-//meant to be 'call()'ed with the combatant object
-  function* streamGenerator(stream, arguments){
-    let args;
-    let argsForStream = arguments
-    for (let i=0;i<stream.length;i++){
-      if (args !== undefined){
-        argsForStream = args;
-      }
-      args = yield stream[i].apply(this, argsForStream);
-    }
-  }
-
 /** Below takes will and influence and outputs a boolean of whether the target is influenced
  **
  ** @param will - The integer value of the target's will against this influence
@@ -366,6 +364,78 @@ define(["./pixi-hexgrid"], function(PIXI){
     //TODO: come up with an algorithm here
     return true;
   }
+
+//meant to be 'call()'ed with the combatant object
+  function chainCaller(chain, final, data){
+    let result;
+    let i = 1;
+    //set a default final function
+    if (typeof final !== "function"){
+      final = data => data;
+    }
+    const next = (data) => {
+      if (i >= chain.length){
+        resolve(data);
+      } else {
+        chain[i].call(this, next, resolve, data);
+      }
+    }
+    const resolve = (data) => {
+      result = final.call(this, data);
+    }
+
+    if (Array.isArray(chain) && chain.length > 0){
+      chain[0].call(this, next, resolve, data);
+    } else {
+      resolve(data);
+    }
+
+  //result is returned whether or not it is undefined.
+    return result;
+  }
+
+//invoked in the context of the combatant attempting to detect
+  function detectionFilter(character){
+    var perceptiveness = this.perceptiveness + this.detectionModifiers.get(character.name) + Math.floor(Math.random() * 30);
+    var sneakiness = character.sneakiness + Math.floor(Math.random() * 30);
+
+    return perceptiveness >= sneakiness;
+  }
+
+  CombatEngine.Combatant.prototype.detectCombatants = function(hgm){
+    //temporary algorithm. Looks at perceptiveness vs. sneakiness with modifiers applied.
+    //TODO: come up with a better algorithm
+  //first: declare variables for this combatant
+    const targets = [];
+    const thisCitizen = hgm.getCitizen(this.name);
+    const thisHex = thisCitizen.currentHex;
+
+    if (thisHex === null){
+      thisHex = hgm.hexAt(thisCitizen.sprite.x, thisCitizen.sprite.y);
+    }
+  //then: remove any allies from the list
+    for (let c in hgm.combatants){
+      if (hgm.combatants[c].team !== this.team){
+        targets.push(hgm.combatants[c]);
+      }
+    }
+  //then: calculate modifier for distance, proportional to the distance between the hex spaces and inversely proportional to their radii
+    for (const c of targets){
+      const radius = thisHex.radius;
+      const targetCitizen = hgm.getCitizen(c.name);
+      const targetHex = targetCitizen.currentHex;
+      if (targetHex === null){
+        targetHex = hgm.hexAt(targetCitizen.sprite.x, targetCitizen.sprite.y);
+      }
+
+      const distance = hgm.distanceBetween(thisHex.gridX, thisHex.gridY, targetHex.gridX, targetHex.gridY);
+
+      const currentModifier = this.detectionModifiers.get(c.name);
+      this.detectionModifiers.set(c.name, currentModifier + Math.floor((distance / radius) * 5 - 50));
+    }
+  //then: Using modifiers from the map and a random modifier, filter the targets array to only those the Combatant detects, and return the filtered array
+    return targets.filter(detectionFilter, this);
+  };
 
 /** This is one of 2 big game logic functions. Assess is called (.call) with a combatant.
  ** It surveys all enemies and all messages, and from there chooses a target. The target can be
@@ -380,32 +450,29 @@ define(["./pixi-hexgrid"], function(PIXI){
  ** @returns void
  */
   CombatEngine.Combatant.prototype.assess = function (hgm){
-    let stream, iteration, remainingTargets;
+    let chain, iteration, remainingTargets;
 
-  //pre-message stream
-  //works by applying side effects to the character's state
-    stream = this.streamFactory(CombatEngine.Combatant.PREASSESSMESSAGE);
-    iteration = stream.next();
-    while (!iteration.done){
-      iteration = stream.next();
-    }
+  //pre-message chain
+  //works by applying side effects to the character's state (specifically modifiers)
+    this.chainRouter(CombatEngine.Combatant.PREASSESSMESSAGE);
 
-  //message stream
-  //Expects the message stream to return the array of the potential enemies to target
-    stream = this.streamFactory(CombatEngine.Combatant.ASSESSMESSAGE, hgm.combatants);
-    iteration = stream.next();
-    while (!iteration.done){
-      remainingTargets = iteration.value;
-      iteration = stream.next(remainingTargets);
-    }
+  //detection chain: initialize remaining to targets to the array of detected enemies
+    remainingTargets = this.detectCombatants(hgm);
 
-  //assess stream
-  //Expects the assess stream to return the array of the remaining potential enemies to target
-    stream = this.streamFactory(CombatEngine.Combatant.ASSESS, remainingTargets);
-    iteration = stream.next();
-    while(!iteration.done){
-      remainingTargets = iteration.value;
-      iteration = stream.next(remainingTargets);
+  //message chain
+  //Expects the message chain to return the array of the potential enemies to target
+    remainingTargets = this.chainRouter(CombatEngine.Combatant.ASSESSMESSAGE, remainingTargets);
+
+  //assess chain
+  //Expects the assess chain to return the array of the remaining potential enemies to target
+    remainingTargets = this.chainRouter(CombatEngine.Combatant.ASSESS, remainingTargets);
+
+    this.detectionModifiers.clear();
+  }
+
+  CombatEngine.Combatant.prototype.loop = function(hgm){
+    if (!this.inAction){
+      this.assess(hgm);
     }
   }
 

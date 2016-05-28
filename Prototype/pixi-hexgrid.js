@@ -179,7 +179,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   }
 
   //Draw the hex grid into a canvas 2d context and instantiate the HexSpace objects for the class
-  function drawHexGrid(hexX, hexY, radius, gridColor, rotate){
+  function drawHexGrid(parentHgm, hexX, hexY, radius, gridColor, rotate){
     var hexHeight = 2 * Math.cos(30 * (Math.PI / 180)) * radius;
     var xAxis = hexX;
     var yAxis = hexY;
@@ -279,9 +279,9 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
             translateDistance += radius / 2;
             if (!lastRow){
               if (rotate){
-                hexSpaces[i][j] = new HexSpace(/*x param*/canvasX, /*y param*/canvasY+translateDistance - radius, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
+                hexSpaces[i][j] = new HexSpace(/*parent hexGridManager*/parentHgm,/*x param*/canvasX, /*y param*/canvasY+translateDistance - radius, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
               } else {
-                hexSpaces[j][i] = new HexSpace(/*x param*/canvasX+translateDistance - radius, /*y param*/canvasY, /*gridX*/j, /*gridY*/i, /*radius*/ radius);
+                hexSpaces[j][i] = new HexSpace(/*parent hexGridManager*/parentHgm,/*x param*/canvasX+translateDistance - radius, /*y param*/canvasY, /*gridX*/j, /*gridY*/i, /*radius*/ radius);
               }
             }
             j++;
@@ -291,9 +291,9 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
             translateDistance += radius;
             if (!lastRow){
               if (rotate){
-                hexSpaces[i][j] = new HexSpace(/*x param*/canvasX + hexHeight /2, /*y param*/canvasY+translateDistance - radius/2, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
+                hexSpaces[i][j] = new HexSpace(/*parent hexGridManager*/parentHgm,/*x param*/canvasX + hexHeight /2, /*y param*/canvasY+translateDistance - radius/2, /*gridX*/i, /*gridY*/j, /*radius*/ radius);
               } else {
-                hexSpaces[j][i] = new HexSpace(/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2, /*gridX*/j, /*gridY*/i, /*radius*/ radius);
+                hexSpaces[j][i] = new HexSpace(/*parent hexGridManager*/parentHgm,/*x param*/canvasX+translateDistance - radius/2, /*y param*/canvasY + hexHeight /2, /*gridX*/j, /*gridY*/i, /*radius*/ radius);
               }
             }
             j++
@@ -415,7 +415,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   //returns object with 2 properties:
   //  interrupt: a function which will interrupt the movement and call the endAnimation function
   //  facing: angle (in radians) of the direction the sprite is moving - Left: 0, down: Math.PI/2, right: Math.PI, up: Math.PI * (3/2)
-  function moveCitizen(citizen, destX, destY, time, movingAnimation, endAnimation){
+  function moveCitizen(hgm, citizen, destX, destY, time, movingAnimation, endAnimation){
     if (citizen.moving){
       var oldEndAnimation = citizen.interrupt(true);
       if (typeof endAnimation !== "function"){
@@ -423,7 +423,11 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       }
     }
 
+    var ticker = hgm.ticker; //hgm has the central ticker for the whole grid
     var sprite = citizen.sprite;
+    var registerAnimation = function(){}; //sets up a blank function so that it can always be added and removed from the ticker consistently
+    var deregisterAnimation;
+    var distanceX, distanceY, angle;
 
     destX = parseInt (destX);
     destY = parseInt (destY);
@@ -433,15 +437,22 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     if (typeof time !== "number" || time < 0){
       throw new Error("Not a valid time");
     }
-    var distanceX = destX - sprite.x;
-    var distanceY = destY - sprite.y;
+    distanceX = destX - sprite.x;
+    distanceY = destY - sprite.y;
   //calculate the direction the sprite should be facing
-    var angle = calculateDirectionAngle(distanceX, distanceY);
+    angle = calculateDirectionAngle(distanceX, distanceY);
 
-  //initialize PIXI's Ticker class which allows you to perform updates on every animation frame
-    var ticker = new PIXI.ticker.Ticker();
+    if (typeof movingAnimation === "function"){
+    //added to ticker with context of ticker, so use this for consistency
+      registerAnimation = function(){
+        movingAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite, deregisterAnimation);
+      };
+      deregisterAnimation = function(){
+        ticker.remove(registerAnimation);
+      };
+    }
 
-    ticker.add(function(){
+    function movingCitizen(){
       var timeRatio = Math.abs(this.elapsedMS) / time;
       var moveX = distanceX * timeRatio;
       var moveY = distanceY * timeRatio;
@@ -456,47 +467,38 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
         sprite.y += moveY;
       }
 
+    //destination has been reached - clean up
       if (sprite.x === destX && sprite.y === destY){
         citizen.clearInterrupt();
         citizen.moving = false;
+        this.remove(registerAnimation);
+        this.remove(movingCitizen);
         if (typeof endAnimation === "function"){
-          this.remove();
           this.addOnce(function(){
             endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite);
-            this.stop();
           }, ticker);
-        } else{
-          this.remove();
         }
       }
-    }, ticker);
-
-    if (typeof movingAnimation === "function"){
-      var registerAnimation = function(){
-        movingAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, sprite, deregisterAnimation);
-      };
-      var deregisterAnimation = function(){
-        ticker.remove(registerAnimation);
-      };
-      ticker.add(registerAnimation);
     }
+
+    ticker.add(registerAnimation, ticker);
+    ticker.add(movingCitizen, ticker);
 
     citizen.moving = true;
     citizen.facing = angle;
+
+  //if still moving, doesn't call the endAnimation. Instead returns it so that it could be reused
     citizen.setInterrupt(function(stillMoving){
+      ticker.remove(registerAnimation);
+      ticker.remove(movingCitizen);
       if (typeof endAnimation === "function" && !stillMoving){
-        ticker.remove();
         ticker.addOnce(function(){
-          endAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, sprite);
-          ticker.stop();
-        });
+          endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite);
+        }, ticker);
       } else {
-        ticker.stop();
         return endAnimation;
       }
     });
-
-    ticker.start();
   }
 
 //takes the center point, the radius, and the offset angle (how much it is rotated) in radians and returns the radial point.
@@ -536,9 +538,9 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
 //CLASSES
 
 /**
- * Below is an unfinished first pass. Many unresolved needs. Doesn't account for GameCharacter interface.
+ * Below is a first pass. Creates a proxy object for the HexSpace accessible to clients
  */
-  function HexSpace(x, y, gridX, gridY, radius){
+  function HexSpace(parentHgm, x, y, gridX, gridY, radius){
     var that = this;
     
     Object.defineProperty(this, "x", {
@@ -610,7 +612,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       }
     };
 
-    this.vacate = function(formerOccupant){
+    this.vacate = function(formerOccupant, setCurrentHex){
       var success = false;
       for (var i=0; i<occupants.length; i++){
         if (occupants[i] === formerOccupant){
@@ -632,7 +634,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       var f = newOccupant.facing;
       switch (occupants.length){
         case 1:
-          moveCitizen(newOccupant, this.x, this.y, 250);
+          moveCitizen(parentHgm, newOccupant, this.x, this.y, 250);
           break;
         case 2:
           var left, right;
@@ -644,8 +646,8 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
             right = newOccupant;
           }
 
-          moveCitizen(left, this.x - this.radius/2, this.y, 250);
-          moveCitizen(right, this.x + this.radius/2, this.y, 250);
+          moveCitizen(parentHgm, left, this.x - this.radius/2, this.y, 250);
+          moveCitizen(parentHgm, right, this.x + this.radius/2, this.y, 250);
           break;
         default:
           var increment = Math.PI * (2 / occupants.length);
@@ -653,7 +655,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
           var center = new PIXI.Point(this.x, this.y);
           for (var i=0; i<occupants.length; i++){
             var newPoint = calculateRadialPoint(center, r, increment * i);
-            moveCitizen(occupants[i], newPoint.x, newPoint.y, 250);
+            moveCitizen(parentHgm, occupants[i], newPoint.x, newPoint.y, 250);
           }
           break;
       }
@@ -792,7 +794,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       enumerable: true,
       get: function(){return currentHex;},
       set: function(hex){
-        if (hex.constructor === HexSpace){
+        if (hex && hex.constructor === HexSpace){
           currentHex = hex;
         } else {
           currentHex = null;
@@ -803,14 +805,10 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   //final variables
     Object.defineProperty(this, "sprite", {
       value: sprite,
-      writable: false,
-      configurable: false,
       enumerable: true
     });
     Object.defineProperty(this, "name", {
       value: name,
-      writable: false,
-      configurable: false,
       enumerable: true
     });
 
@@ -848,7 +846,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
         Object.defineProperty(lite, "currentHex", {
           configurable: false,
           enumerable: true,
-          get: function(){return currentHex.getHexLite();}
+          get: function(){return currentHex ? currentHex.getHexLite() : null;}
         });
 
         Object.defineProperty(lite, "sprite", {
@@ -910,7 +908,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     }
 
   //initialize grid texture and utility variables from hex data
-    var gridInfo = drawHexGrid(hexX, hexY, radius, penColor, isRotated);
+    var gridInfo = drawHexGrid(hexGridManager, hexX, hexY, radius, penColor, isRotated);
     hexArray = new Flat2dGrid(gridInfo.hexSpaces);
     kdTree = new KdTree(hexArray.flattenedArray);
     var gridTexture = PIXI.Texture.fromCanvas(gridInfo.canvas);
@@ -928,60 +926,45 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   //Final variables
     Object.defineProperty(hexGridManager, "gridSprite", {
       value: gridSprite,
-      configurable: false,
-      writable: false,
+      enumerable: true
+    });
+    Object.defineProperty(hexGridManager, "ticker", {
+      value: new PIXI.ticker.Ticker(),
       enumerable: true
     });
     Object.defineProperty(hexGridManager, "grid", {
       value: stage,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
     Object.defineProperty(hexGridManager, "underLayer", {
       value: underLayer,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
     Object.defineProperty(hexGridManager, "citizenLayer", {
       value: citizenLayer,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
     Object.defineProperty(hexGridManager, "overLayer", {
       value: overLayer,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
-
     Object.defineProperty(hexGridManager, "hexRadius", {
       value: radius,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
 
     var dim = {};
     Object.defineProperty(dim, "gridX", {
       value: hexX,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
     Object.defineProperty(dim, "gridY", {
       value: hexY,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
 
     Object.defineProperty(hexGridManager, "dimensions", {
       value: dim,
-      configurable: false,
-      writable: false,
       enumerable: true
     });
 
@@ -994,6 +977,15 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     hexGridManager.hexAt = function(x, y){
       var hex = kdTree.nearestNeighbor(x, y);
       return hex.getHexLite();
+    }
+
+    hexGridManager.getAllHexSpaces = function(){
+      var result = [];
+      var temp = hexArray.flattenedArray;
+      for (var i=0; i<temp.length; i++){
+        result[i] = temp[i].getHexLite();
+      }
+      return result;
     }
 
     hexGridManager.distanceBetween = function(gridX1, gridY1, gridX2, gridY2){
@@ -1164,7 +1156,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     //if time is 0 or undefined, simply jump to the destination immediately
       if ((time || 0) === 0) {
         var success = hex.occupy(c);
-        if (success && originHex){
+        if (success && originHex && originHex !== hex){
           originHex.vacate(c);
         }
         return success;
@@ -1196,9 +1188,10 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
 
       if (originHex){
         originHex.vacate(c);
+        c.currentHex = null;
       }
     //Sets facing, moving and interrupt on the passed citizen object
-      moveCitizen(c, hex.x, hex.y, (time || 0), animation, ea2);
+      moveCitizen(this, c, hex.x, hex.y, (time || 0), animation, ea2);
       return c.interrupt;
     };
 
