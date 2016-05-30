@@ -45,6 +45,7 @@ define(["./pixi-hexgrid"], function(PIXI){
 
   function initiateCombatTop(hgm, renderer){
     let go = true;
+    hgm.ticker.start();
     function animate (){
       while (go){
         requestAnimationFrame(animate);
@@ -60,8 +61,8 @@ define(["./pixi-hexgrid"], function(PIXI){
     requestAnimationFrame(animate);
 
     return function(){
-      if (go){go = !go;}
-      else {go = true; requestAnimationFrame(animate);}
+      if (go){go = !go; hgm.ticker.stop();}
+      else {go = true; hgm.ticker.start(); requestAnimationFrame(animate);}
     }
   }
 
@@ -182,25 +183,40 @@ define(["./pixi-hexgrid"], function(PIXI){
 
   CombatEngine.Combatant = function(){
     let inCombat = false;
+    let inAction = false;
     let target = null;
+    let interruptChain = [];
     let preAssessMessageChain = [];
     let assessMessageChain = [];
     let assessChain = [];
     let finalAssessment = defaultFinalAssessment;
+    let actionMessageChain = [];
+    let actionChain = [];
+    let finalAction = defaultFinalAction;
 
-    this.chainRouter = function(chainType, dataArray){
+  //Methods
+    this.chainRouter = function(chainType, data){
       switch (chainType){
         case CombatEngine.Combatant.PREASSESSMESSAGE:
           return chainCaller.call(this, preAssessMessageChain); //returns undefined
           break;
         case CombatEngine.Combatant.ASSESSMESSAGE:
-          return chainCaller.call(this, assessMessageChain, undefined, dataArray); //returns the filtered data array
+          return chainCaller.call(this, assessMessageChain, undefined, data); //returns the filtered data array
           break;
         case CombatEngine.Combatant.ASSESS:
-          return chainCaller.call(this, assessChain, finalAssessment, dataArray); //returns the filtered data array
+          return chainCaller.call(this, assessChain, finalAssessment, data); //returns the filtered data array
+          break;
+        case CombatEngine.Combatant.ACTIONMESSAGE:
+          return chainCaller.call(this, actionMessageChain, actionMessageFinal, data); //returns an action or false
+          break;
+        case CombatEngine.Combatant.ACTION:
+          return chainCaller.call(this, actionChain, finalAction, data); //returns an action
           break;
       }
     };
+
+    this.setAssessChain = () => {assessChain = []; return setAssessChainTop(assessChain, (fn) => finalAssessment = fn);};
+    this.setActionChain = () => {actionChain = []; return setAssessChainTop(actionChain, (fn) => finalAction = fn);};
 
   //read-only properties
     Object.defineProperty(this, "detectionModifiers", {
@@ -317,6 +333,48 @@ define(["./pixi-hexgrid"], function(PIXI){
     });
   };
 
+  function setAssessChainTop(ac, finalAssessmentSetter){
+    let chain {
+      then: (fn) => {ac.push(fn); return chain;},
+      finally: (fn) => finalAssessmentSetter(fn)
+    };
+
+    return chain;
+  }
+
+  function setActionChainTop(ac, finalActionSetter){
+    let chain {
+      then: (fn) => {ac.push(fn); return chain;},
+      finally: (fn) => finalAssessmentSetter(fn)
+    };
+
+    return chain;
+  }
+
+//Builder
+  CombatEngine.Combatant.combatantBuilder = function (){
+    let newC = new CombatEngine.Combatant();
+
+    let builder = {
+      build: () => {
+        const temp = newC;
+        newC = undefined;
+        return temp;
+      },
+      defense: (score) => {newC.defense = score; return builder;},
+      endurance: (score) => {newC.endurance = score; return builder;},
+      hp: (total) => {newC.maxHP = total; newC.currentHP = total; return builder;},
+      influence: (score) => {newC.influence = score; return builder;},
+      marksmanship: (score) => {newC.marksmanship = score; return builder;},
+      perceptiveness: (score) => {newC.perceptiveness = score; return builder;},
+      sneakiness: (score) => {newC.sneakiness = score; return builder;},
+      speed: (s) => {newC.speed = s; return builder;},
+      strength: (score) => {newC.strength = score; return builder;},
+      willfulness: (score) => {newC.willfulness = score; return builder;},
+    };
+    return builder;
+  };
+
 //ENUMs
   //Trait ENUMs
   CombatEngine.Combatant.MELEE = Symbol();
@@ -337,10 +395,20 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.Combatant.WEAPON2 = Symbol();
   CombatEngine.Combatant.FEET = Symbol();
 
-  //Stream ENUMs
+  //Chain ENUMs
   CombatEngine.Combatant.PREASSESSMESSAGE = Symbol();
   CombatEngine.Combatant.ASSESSMESSAGE = Symbol();
   CombatEngine.Combatant.ASSESS = Symbol();
+  CombatEngine.Combatant.ACTIONMESSAGE = Symbol();
+  CombatEngine.Combatant.ACTION = Symbol();
+
+  //Action ENUMs
+  CombatEngine.Combatant.ATTACK = Symbol();
+  CombatEngine.Combatant.MOVE = Symbol();
+  CombatEngine.Combatant.RETREAT = Symbol();
+  CombatEngine.Combatant.DEFEND = Symbol();
+
+//chain helper functions
 
   function defaultFinalAssessment (enemies){
     if (enemies.length < 2){
@@ -350,6 +418,18 @@ define(["./pixi-hexgrid"], function(PIXI){
     let randomEnemy =  Math.floor(Math.random() * (enemies.length));
 
     return [enemies[randomEnemy]];
+  }
+
+  function actionMessageFinal (data){
+    if (typeof data !== "symbol"){
+      return false;
+    } else {
+      return data;
+    }
+  }
+
+  function defaultFinalAction (action) {
+    return action;
   }
 
 /** Below takes will and influence and outputs a boolean of whether the target is influenced
@@ -402,7 +482,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     return perceptiveness >= sneakiness;
   }
 
-  CombatEngine.Combatant.prototype.detectCombatants = function(hgm){
+  CombatEngine.Combatant.prototype.detectEnemies = function(hgm){
     //temporary algorithm. Looks at perceptiveness vs. sneakiness with modifiers applied.
     //TODO: come up with a better algorithm
   //first: declare variables for this combatant
@@ -437,7 +517,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     return targets.filter(detectionFilter, this);
   };
 
-/** This is one of 2 big game logic functions. Assess is called (.call) with a combatant.
+/** This is one of 2 big game logic functions.
  ** It surveys all enemies and all messages, and from there chooses a target. The target can be
  ** either a fellow combatant or a grid space.
  **
@@ -450,14 +530,14 @@ define(["./pixi-hexgrid"], function(PIXI){
  ** @returns void
  */
   CombatEngine.Combatant.prototype.assess = function (hgm){
-    let chain, iteration, remainingTargets;
+    let remainingTargets;
 
   //pre-message chain
   //works by applying side effects to the character's state (specifically modifiers)
     this.chainRouter(CombatEngine.Combatant.PREASSESSMESSAGE);
 
   //detection chain: initialize remaining to targets to the array of detected enemies
-    remainingTargets = this.detectCombatants(hgm);
+    remainingTargets = this.detectEnemies(hgm);
 
   //message chain
   //Expects the message chain to return the array of the potential enemies to target
@@ -469,12 +549,38 @@ define(["./pixi-hexgrid"], function(PIXI){
 
     this.detectionModifiers.clear();
 
-    return remainingTargets;
-  }
+    this.target = privateSetter(remainingTargets);
+  };
+
+/** This is the second big game logic function. It chooses an action based on the targets array
+ ** passed through to it as well as its set behavioral algorithms and messages.
+ **
+ ** @param hgm - HexGridManager
+ **
+ ** @returns action - symbol, one of the action ENUMs on this class
+ */
+  CombatEngine.Combatant.prototype.chooseAction = function(hgm){
+    let action;
+
+  //action message chain
+    action = this.chainRouter(CombatEngine.Combatant.ACTIONMESSAGE, null);
+
+  //action chain (only if an action wasn't chosen from messages)
+    if (!action){
+      //putting DEFEND as the default action
+      action = this.chainRouter(CombatEngine.Combatant.ACTION, CombatEngine.Combatant.DEFEND);
+    }
+
+    return action;
+  };
+
 
   CombatEngine.Combatant.prototype.loop = function(hgm){
     if (!this.inAction){
       this.assess(hgm);
+      let action = this.chooseAction(hgm);
+      //this.beginAction(targets, action);
+      this.inAction = true; //remove when above method is implemented
     }
   }
 

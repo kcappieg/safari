@@ -333,8 +333,16 @@ Arguments | Type    | Notes
 ######Builder Object Methods
 
 * `build()` - Builds the `Combatant` object and returns it
+* `defense(score)` - `score`: `number:Integer`; sets defense Score
+* `endurance(score)` - `score`: `number:Integer`; sets endurance Score
 * `hp(total)` - `total`: `number:Integer`; sets max and initial HP value
-* `
+* `influence(score)` - `score`: `number:Integer`; sets influence Score
+* `marksmanship(score)` - `score`: `number:Integer`; sets marksmanship Score
+* `perceptiveness(score)` - `score`: `number:Integer`; sets perceptiveness Score
+* `sneakiness(score)` - `score`: `number:Integer`; sets sneakiness Score
+* `speed(s)` - `s`: `number:Integer`; sets speed
+* `strength(score)` - `score`: `number:Integer`; sets strength Score
+* `willfulness(score)` - `score`: `number:Integer`; sets willfulness Score
 
 ####Constructors
 
@@ -345,6 +353,18 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 #####`inCombat`
 
 `boolean` **Read-only** Is this combatant registered on a battlefield already?
+
+----------------------------
+
+#####`inAction`
+
+`boolean` **Read-only** Is this combatant registered on a battlefield already?
+
+----------------------------
+
+#####`target`
+
+`ARRAY[type:CombatEngine.Combatant]` **Read-only** The current target or targets for the Combatant.
 
 ----------------------------
 
@@ -502,7 +522,7 @@ Send a message to a recipient.
 
 Arguments | Type    | Notes
 ----------|---------|---------
-`fn` | `function` | Function to be executed at the time specified by `context`. Generally, an information function which affects a character's likelihood to know something or detect someone, a filtering function (to filter the battlefield of potential targets) or function that returns a course of action.
+`fn` | `function` | Function to be executed at the time specified by `context`. Generally, an information function which affects a character's likelihood to know something or detect someone, a filtering function (to filter the battlefield of potential targets), an interruption that the character can either address or ignore, or function that returns a course of action.
 
 **Returns** void
 
@@ -573,9 +593,9 @@ Arguments | Type    | Notes
 
 =====================================
 
-#####`battlefieldSurveyStream()`
+#####`setAssessChain()`
 
-Initialize a stream-like interface on which you can set behavioral functions which filter enemies from an array,
+Initialize a chain of responsibility on which you can set behavioral functions which filter enemies from an array and chooses the target for the Combatant
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -610,9 +630,9 @@ Arguments | Type    | Notes
 
 =====================================
 
-#####`courseOfActionStream()`
+#####`setActionChain()`
 
-Initialize a stream-like interface on which you can set behavioral functions which determines the course of action the combatant will take.
+Initialize a chain of responsibility interface on which you can set behavioral functions which determines the course of action the combatant will take.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -621,27 +641,27 @@ Arguments | Type    | Notes
 
 ######`next(fn)`
 
-Takes and sets a function to be called on the chain. Arguments and actions of the function TBD. Must call either `next()` or `resolve()` in order to continue or resolve the chain.
+Takes and sets a function to be called on the chain. The function takes a Symbol (an action ENUM) and should choose a different action or pass the existing one through. Must call either `next()` or `resolve()` with the intended action (i.e. `next(CombatEngine.Combatant.DEFEND)` in order to continue or resolve the chain.
 
 Arguments | Type    | Notes
 ----------|---------|---------
 `fn` | `function` | Function with the below argument signature
 
-* `TBD`: 
 * `next`: `function` - Function which calls the next behavioral function
 * `resolve`: `function` - Function which calls the final function in the chain, skipping any others not yet called
+* `action`: `symbol` - Action Enum corresponding to the intended action.
 
 **Returns** `this`
 
 ######`finally(fn)`
 
-Takes and sets a function to be called as the last behavioral function in the chain. This function should somehow return the course of action to be taken (TBD)
+Takes and sets a function to be called as the last behavioral function in the chain. This function should return the course of action to be taken, either by passing through the one passed to it and/or returning a default action.
 
 Arguments | Type    | Notes
 ----------|---------|---------
 `fn` | `function` | Function with the below argument signature
 
-* `TBD`:
+* `action`: `symbol` - Action Enum correesponding to the intended action.
 
 **Returns** void
 
