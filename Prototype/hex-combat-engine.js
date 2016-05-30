@@ -15,14 +15,14 @@ define(["./pixi-hexgrid"], function(PIXI){
     return {i: internal, n: newVal};
   }
 
-  function CombatEngine(renderer){
+  function CombatEngine(r){
     
   //final variables
     const combatants = {};
     const battlefields = {};
 
   //instance variables
-    let renderer = renderer;
+    let renderer = r;
 
     this.addCombatant = (name, combatant) => {addCombatantTop(name, combatant, combatants); return this;};
     this.removeCombatant = (name) => removeCombatantTop(name, combatants);
@@ -39,7 +39,9 @@ define(["./pixi-hexgrid"], function(PIXI){
     this.setRenderer = (newRenderer) => {renderer = newRenderer; return this;};
     this.onCombatFinish = (battlefield, fn) => {onCombatFinishTop(battlefields[battlefield], fn); return this;};
     this.offCombatFinish = (battlefield, fn) => {offCombatFinishTop(battlefields[battlefield], fn); return this;};
+    this.getBattlefieldHexGridManager = (battlefield) => battlefields[battlefield];
 
+  //this method needs to be modified to account for the edge case where a battle is initiated when another is still going
     this.initiateCombat = (battlefield) => initiateCombatTop(battlefields[battlefield], renderer);
   }
 
@@ -47,7 +49,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     let go = true;
     hgm.ticker.start();
     function animate (){
-      while (go){
+      if (go){
         requestAnimationFrame(animate);
 
         for (let name in hgm.combatants) {
@@ -116,7 +118,7 @@ define(["./pixi-hexgrid"], function(PIXI){
   }
 
   function addCombatantToBattlefieldTop (name, combatant, hgm, hexX, hexY){
-    if (combatant.inCombat >= 0){
+    if (combatant.inCombat){
       throw new Error ("Combatant already registered on a battlefield");
     }
 
@@ -170,7 +172,23 @@ define(["./pixi-hexgrid"], function(PIXI){
 
 //Register battlefields. Can specify background texture, gridLines, and function for applying terrain types to every hex space on the grid
   const battlefieldTypes = {};
-  CombatEngine.registerBattlefield = function(type, texture, hexTerrains, gridLines){
+  CombatEngine.registerBattlefieldType = function(type, texture, hexTerrains, gridLines){
+    if (typeof texture === "function"){
+      if (typeof hexTerrains === "string"){
+        gridLines = hexTerrains;
+      }
+      hexTerrains = texture;
+      texture = null;
+    } else if (typeof texture === "string"){
+      gridLines = texture;
+      texture = null;
+    }
+
+    if (typeof hexTerrains === "string"){
+      gridLines = hexTerrains;
+      hexTerrains = null;
+    }
+
     if (!gridLines){
       gridLines = '#000000';
     }
@@ -328,13 +346,13 @@ define(["./pixi-hexgrid"], function(PIXI){
     });
     Object.defineProperty(this, "target", {
       enumerable: true,
-      get: () => target;
+      get: () => target,
       set: (newVal) => {if (newVal.i === internal){target = newVal.n;} return target;}
     });
   };
 
   function setAssessChainTop(ac, finalAssessmentSetter){
-    let chain {
+    let chain = {
       then: (fn) => {ac.push(fn); return chain;},
       finally: (fn) => finalAssessmentSetter(fn)
     };
@@ -343,7 +361,7 @@ define(["./pixi-hexgrid"], function(PIXI){
   }
 
   function setActionChainTop(ac, finalActionSetter){
-    let chain {
+    let chain = {
       then: (fn) => {ac.push(fn); return chain;},
       finally: (fn) => finalAssessmentSetter(fn)
     };
@@ -354,9 +372,13 @@ define(["./pixi-hexgrid"], function(PIXI){
 //Builder
   CombatEngine.Combatant.combatantBuilder = function (){
     let newC = new CombatEngine.Combatant();
+    let spriteSet = false;
 
     let builder = {
       build: () => {
+        if (!spriteSet){
+          throw new Error ("Sprite not set yet. Set sprite before building!");
+        }
         const temp = newC;
         newC = undefined;
         return temp;
@@ -369,7 +391,9 @@ define(["./pixi-hexgrid"], function(PIXI){
       perceptiveness: (score) => {newC.perceptiveness = score; return builder;},
       sneakiness: (score) => {newC.sneakiness = score; return builder;},
       speed: (s) => {newC.speed = s; return builder;},
+      sprite: (s) => {newC.sprite = privateSetter(s); spriteSet = true; return builder;},
       strength: (score) => {newC.strength = score; return builder;},
+      team: (t) => {newC.team = t; return builder;},
       willfulness: (score) => {newC.willfulness = score; return builder;},
     };
     return builder;
@@ -488,7 +512,7 @@ define(["./pixi-hexgrid"], function(PIXI){
   //first: declare variables for this combatant
     const targets = [];
     const thisCitizen = hgm.getCitizen(this.name);
-    const thisHex = thisCitizen.currentHex;
+    let thisHex = thisCitizen.currentHex;
 
     if (thisHex === null){
       thisHex = hgm.hexAt(thisCitizen.sprite.x, thisCitizen.sprite.y);
@@ -500,17 +524,17 @@ define(["./pixi-hexgrid"], function(PIXI){
       }
     }
   //then: calculate modifier for distance, proportional to the distance between the hex spaces and inversely proportional to their radii
-    for (const c of targets){
+    for (let c of targets){
       const radius = thisHex.radius;
       const targetCitizen = hgm.getCitizen(c.name);
-      const targetHex = targetCitizen.currentHex;
+      let targetHex = targetCitizen.currentHex;
       if (targetHex === null){
         targetHex = hgm.hexAt(targetCitizen.sprite.x, targetCitizen.sprite.y);
       }
 
       const distance = hgm.distanceBetween(thisHex.gridX, thisHex.gridY, targetHex.gridX, targetHex.gridY);
 
-      const currentModifier = this.detectionModifiers.get(c.name);
+      const currentModifier = this.detectionModifiers.get(c.name) || 0;
       this.detectionModifiers.set(c.name, currentModifier - Math.floor((distance / radius) * 5 - 50));
     }
   //then: Using modifiers from the map and a random modifier, filter the targets array to only those the Combatant detects, and return the filtered array
@@ -581,6 +605,7 @@ define(["./pixi-hexgrid"], function(PIXI){
       let action = this.chooseAction(hgm);
       //this.beginAction(targets, action);
       this.inAction = true; //remove when above method is implemented
+      this.actionType = action;
     }
   }
 

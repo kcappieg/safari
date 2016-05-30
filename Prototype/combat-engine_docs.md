@@ -104,15 +104,15 @@ Main controller for combat engine. Holds references to all combatants. Implement
 
 ####Staic Methods
 
-#####`registerBattlefieldType(type, texture, hexterrains[, gridLines])`
+#####`registerBattlefieldType(type[, texture][, hexterrains][, gridLines])`
 
 Registers a battlefield type using the `data` object.
 
 Arguments | Type    | Notes
 ----------|---------|---------
 `type` | `string` | The name for the battlefield type you are registering.
-`texture` | `type:PIXI.Texture` | Texture to be used as the battlefield's background.
-`hexTerrains` | `function(hexLite)` | Takes a `HexLite` object (see `PIXI.HexGrid` docs). This function is invoked for every hex space on the grid with the primary goal of adding terrain features to the grid. It should return an array of strings, each of which is the name of a previously-registered terrain type (registered with the `PIXI.HexGrid.Terrain` object in `PIXI.HexGrid` docs)
+`texture` | `type:PIXI.Texture` | **Optional** Texture to be used as the battlefield's background.
+`hexTerrains` | `function` | **Optional** Takes a `HexLite` object (see `PIXI.HexGrid` docs). This function is invoked for every hex space on the grid with the primary goal of adding terrain features to the grid. It should return an array of strings, each of which is the name of a previously-registered terrain type (registered with the `PIXI.HexGrid.Terrain` object in `PIXI.HexGrid` docs)
 `gridLines` | `string` | **Optional** Color string to be used for the grid lines of the battlefield. Defaults to `#000000`
 
 **Returns** `this`
@@ -277,6 +277,20 @@ Arguments | Type    | Notes
 `renderer` | `type:PIXI.SystemRenderer` | Renderer (either WebGL or Canvas) which will render the views of the battlefield combats
 
 **Returns** `this`
+
+==========================================
+
+#####`getBattlefieldHexGridManager(battlefield)`
+
+Get the `HexGridManager` for a given battlefield.
+
+**Caution** This method is here to allow access to things like the `grid` property, or other uses of the object. If you add citizens or make other changes without using the `CombatEngine` interface, the `CombatEngine` may not behave as you expect it to.
+
+Arguments | Type    | Notes
+----------|---------|---------
+`battlefield` | `symbol` | The unique identifier of the battlefield you are accessing.
+
+**Returns** `type:HexGridManager` Controller object for the hexgrid this battlefield is based on. See `HexGridManager` docs for details
 
 ==========================================
 

@@ -445,7 +445,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     if (typeof movingAnimation === "function"){
     //added to ticker with context of ticker, so use this for consistency
       registerAnimation = function(){
-        movingAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite, deregisterAnimation);
+        movingAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, citizen.getCitizenLite(), deregisterAnimation);
       };
       deregisterAnimation = function(){
         ticker.remove(registerAnimation);
@@ -475,7 +475,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
         this.remove(movingCitizen);
         if (typeof endAnimation === "function"){
           this.addOnce(function(){
-            endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite);
+            endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, citizen.getCitizenLite());
           }, ticker);
         }
       }
@@ -1138,18 +1138,18 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       return success;
     }
 
-    hexGridManager.moveCitizenTo = function(citizen, x, y, time, animation, endAnimation){
+    hexGridManager.moveCitizenTo = function(name, x, y, time, animation, endAnimation){
       if (x < 0 || x >= hexArray.columns || y < 0 || y >= hexArray.rows){
         throw new Error ("Grid index out of bounds");
       }
-      if (!population[citizen]){
+      if (!population[name]){
         throw new Error("Citizen not a member of this grid");
       }
       if (typeof time !== "number" && time !== undefined){
         throw new Error("Not a valid time");
       }
       var that = this;
-      var c = population[citizen];
+      var c = population[name];
       var hex = hexArray.getAt(x, y);
       var originHex = c.currentHex;
 
@@ -1164,8 +1164,9 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
 
 
     //create wrapper function for the endAnimation argument that occupies the hex grid
-      var ea2 = function(tickerLite, sprite){
-        var landingHex = kdTree.nearestNeighbor(sprite.x, sprite.y);
+      var ea2 = function(tickerLite, citizen){
+
+        var landingHex = kdTree.nearestNeighbor(citizen.sprite.x, citizen.sprite.y);
         if (originHex){
           if (!landingHex.occupy(c)){
             var path = that.hexesBetween(originHex.gridX, originHex.gridY, hex.gridX, hex.gridY);
@@ -1182,7 +1183,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
           occupy(landingHex, c, that);
         }
         if (typeof endAnimation === "function"){
-          endAnimation(tickerLite, sprite);
+          endAnimation(tickerLite, citizen);
         }
       };
 

@@ -234,7 +234,7 @@ endAnimation | `function` | **Optional** If an `animation` function was passed, 
 * `tickerLite` - `object` with the following properties
  * `deltaTime` - `number:floating point` as the `deltaTime` property from the `PIXI.Ticker` object
  * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
-* `sprite` - `type:PIXI.Sprite` object of the citizen being moved
+* `citizen` - `type:CitizenLite` object of the citizen being moved
 * `deregisterAnimation` - `function` deregisters the animation function if the animation is complete
 
 ######Arguments to `endAnimation()`
@@ -242,7 +242,7 @@ endAnimation | `function` | **Optional** If an `animation` function was passed, 
 * `tickerLite` - `object` with the following properties
  * `deltaTime` - `number:floating point` as the `deltaTime` property from the `PIXI.Ticker` object
  * `elapsedMS` - `number:floating point` as the `elapsedMS` property from the `PIXI.Ticker`
-* `sprite` - `type:PIXI.Sprite` object of the citizen being moved
+* `citizen` - `type:CitizenLite` object of the citizen being moved
 
 **Returns** `function` Takes no arguments. When called, iterrupts the movement and forces the citizen to occupy the nearest `HexSpace`
 

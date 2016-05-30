@@ -1,101 +1,89 @@
 var dev = {};
 requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
   "use strict";
-  var hexGridManager = PIXI.HexGrid.initializeHexGrid(20, 15, 30, true);
-  var stage = hexGridManager.grid;
-  hexGridManager.ticker.start();
-  //var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0x66ff99});
-  var renderer = PIXI.autoDetectRenderer(stage.width, stage.height, {backgroundColor: 0xffffff, antialias: true});
+  let renderer = PIXI.autoDetectRenderer(800, 800, {backgroundColor: 0xffffff, antialias: true});
   document.body.appendChild(renderer.view);
 
-  stage.interactive = true;
+//initialize Combat Engine
+  let cE = new CE(renderer);
 
-  var bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
-  var bowmanTextures = [];
-  var down = 64*19;
-  for (var i = 0; i < 13; i++){
-    var rect = new PIXI.Rectangle(64*i, down, 64, 64);
-    var texture = new PIXI.Texture(bowman, rect);
+//initialize Combatants
+
+  let bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
+  let bowmanTextures = [];
+  let down = 64*19;
+  for (let i = 0; i < 13; i++){
+    let rect = new PIXI.Rectangle(64*i, down, 64, 64);
+    let texture = new PIXI.Texture(bowman, rect);
     bowmanTextures[i] = texture;
   }
 
-  var bowmanSprite = new PIXI.Sprite(bowmanTextures[0]);
+  let bowmanSprite = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite.width = 50;
   bowmanSprite.height = 50;
   bowmanSprite.anchor.x = .5;
   bowmanSprite.anchor.y = .5;
 
-  var bowmanSprite2 = new PIXI.Sprite(bowmanTextures[0]);
+  let b1 = CE.Combatant.combatantBuilder()
+    .sprite(bowmanSprite)
+    .hp(100)
+    .influence(40)
+    .speed(200)
+    .build();
+
+
+  let bowmanSprite2 = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite2.width = 50;
   bowmanSprite2.height = 50;
   bowmanSprite2.anchor.x = .5;
   bowmanSprite2.anchor.y = .5;
   bowmanSprite2.tint = 0x00ff00;
 
-  var bowmanSprite3 = new PIXI.Sprite(bowmanTextures[0]);
+  let b2 = CE.Combatant.combatantBuilder()
+    .sprite(bowmanSprite2)
+    .hp(150)
+    .willfulness(40)
+    .speed(250)
+    .build();
+
+
+  let bowmanSprite3 = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite3.width = 50;
   bowmanSprite3.height = 50;
   bowmanSprite3.anchor.x = .5;
   bowmanSprite3.anchor.y = .5;
   bowmanSprite3.tint = 0xff0000;
 
-  var bowmanSprite4 = new PIXI.Sprite(bowmanTextures[0]);
+  let b3 = CE.Combatant.combatantBuilder()
+    .sprite(bowmanSprite3)
+    .hp(90)
+    .endurance(40)
+    .speed(150)
+    .build();
+
+
+  let bowmanSprite4 = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite4.width = 50;
   bowmanSprite4.height = 50;
   bowmanSprite4.anchor.x = .5;
   bowmanSprite4.anchor.y = .5;
   bowmanSprite4.tint = 0x0000ff;
 
-  hexGridManager.addCitizen(bowmanSprite, "bowman", 0, 0);
-  hexGridManager.addCitizen(bowmanSprite2, "bowman2", 0, 1);
-  hexGridManager.addCitizen(bowmanSprite3, "bowman3", 0, 2);
-  hexGridManager.addCitizen(bowmanSprite4, "bowman4", 0, 3);
+  let b4 = CE.Combatant.combatantBuilder()
+    .sprite(bowmanSprite4)
+    .hp(900)
+    .marksmanship(60)
+    .speed(350)
+    .build();
 
-  var elapsed = 0;
-  var frame = 0;
-  var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
-  function fireBow(tickerLite, sprite, deregister){
-    elapsed += tickerLite.deltaTime;
-    if (elapsed >= 3){
-      sprite.texture = bowmanTextures[order[frame]];
-      frame++;
-      elapsed = 0;
-      if (frame === order.length){
-        frame = 0;
-        elapsed = 0;
-        deregister();
-      }
-    }
-  }
-  function fireBowInterrupt(tickerLite, sprite){
-    sprite.texture = bowmanTextures[0];
-    frame = 0;
-    elapsed = 0;
-  }
-
-  function neverStop(){
-    var ticker = new PIXI.ticker.Ticker();
-    var elapsed = 0;
-    var frame = 0;
-    ticker.add(function(){
-      elapsed += this.deltaTime
-      if (elapsed >= 1){
-        bowmanSprite.texture = bowmanTextures[frame];
-        frame++;
-        elapsed = 0;
-        if (frame === 13){
-          frame = 4;
-        }
-      }
-    }, ticker);
-
-    ticker.speed = 0.3;
-    ticker.start();
-    return ticker;
-  }
+  cE.addCombatant("bowman1", b1)
+    .addCombatant("bowman2", b2)
+    .addCombatant("bowman3", b3)
+    .addCombatant("bowman4", b4);
 
   //Terrain Textures
 
+//tree
   var c = document.createElement("canvas");
   c.width = 50;
   c.height = 50;
@@ -109,6 +97,7 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
 
   var treeTexture = PIXI.Texture.fromCanvas(c);
 
+//broken tree
   c = document.createElement("canvas");
   c.width = 50;
   c.height = 50;
@@ -135,43 +124,49 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     fragility: 1
   }, "overlay", -1);
   //Register broken tree terrain
-  PIXI.HexGrid.Terrain.registerNewType("broken tree", brokenTreeTexture, {
+  PIXI.HexGrid.Terrain.registerNewType("broken_tree", brokenTreeTexture, {
     cover: -1,
     concealment: -2,
     fragility: 0
   }, -1);
   //register max occupancy terrain modifier
-  PIXI.HexGrid.Terrain.registerNewType("maxOccMod", brokenTreeTexture, {}, 4);
+  PIXI.HexGrid.Terrain.registerNewType("maxOccMod", brokenTreeTexture, {}, "overlay", 4);
 
-  var brokenTree = hexGridManager.addTerrain(6, 13, "broken tree");
-  var tree = hexGridManager.addTerrain(10, 3, "tree");
-  var maxOcc = hexGridManager.addTerrain(0,0, "maxOccMod");
-  maxOcc.sprite.alpha = 0;
-  tree.sprite.alpha = 0.5;
+  CE.registerBattlefieldType("default", undefined, (hl) => {
+    let terrains = [];
 
-  var toggle = true;
-  hexGridManager.grid.on("click", function(e){
-    if (toggle){
-      hexGridManager.moveCitizenTo("bowman2", 0, 0, 1000);
-      hexGridManager.moveCitizenTo("bowman3", 0, 0, 1000);
-      hexGridManager.moveCitizenTo("bowman4", 0, 0, 1000);
-    } else {
-      hexGridManager.moveCitizenTo("bowman2", 0, 1, 500);
-      hexGridManager.moveCitizenTo("bowman3", 0, 2, 500);
-      hexGridManager.moveCitizenTo("bowman4", 0, 3, 500);
+    if (Math.floor(Math.random() * 6) === 0){
+      terrains.push("tree");
     }
-    toggle = !toggle;
+    if (Math.floor(Math.random() * 5) === 0){
+      terrains.push("broken_tree");
+    }
+    if (Math.floor(Math.random() * 7) === 0){
+      terrains.push("maxOccMod");
+    }
+
+    return terrains;
   });
 
-  function animate() {
-    requestAnimationFrame(animate);
 
-    renderer.render(stage);
-  }
+  let bf = cE.initializeBattlefield("default", 10, 10, 30);
+  cE.addCombatantToBattlefield("bowman1", bf, 0, 0)
+    .addCombatantToBattlefield("bowman2", bf, 0, 1)
+    .addCombatantToBattlefield("bowman3", bf, 0, 2)
+    .addCombatantToBattlefield("bowman4", bf, 0, 3);
 
-  requestAnimationFrame(animate);
-  dev.hgm = hexGridManager;
-  dev.fireBow = fireBow;
-  dev.fireBowInterrupt = fireBowInterrupt;
-  dev.neverStop = neverStop;
+  let hgm = cE.getBattlefieldHexGridManager(bf);
+  hgm.overLayer.alpha = 0.5;
+
+  dev.playPause = cE.initiateCombat(bf);
+
+  dev.cE = cE;
+  dev.bf = bf;
+  dev.b1 = b1;
+  dev.b2 = b2;
+  dev.b3 = b3;
+  dev.b4 = b4;
+  dev.renderer = renderer;
+  dev.hgm = hgm;
+  dev.CE = CE;
 });

@@ -54,10 +54,10 @@ requirejs(['./pixi-hexgrid'], function(PIXI){
   var elapsed = 0;
   var frame = 0;
   var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
-  function fireBow(tickerLite, sprite, deregister){
+  function fireBow(tickerLite, citizen, deregister){
     elapsed += tickerLite.deltaTime;
     if (elapsed >= 3){
-      sprite.texture = bowmanTextures[order[frame]];
+      citizen.sprite.texture = bowmanTextures[order[frame]];
       frame++;
       elapsed = 0;
       if (frame === order.length){
@@ -67,8 +67,8 @@ requirejs(['./pixi-hexgrid'], function(PIXI){
       }
     }
   }
-  function fireBowInterrupt(tickerLite, sprite){
-    sprite.texture = bowmanTextures[0];
+  function fireBowInterrupt(tickerLite, citizen){
+    citizen.sprite.texture = bowmanTextures[0];
     frame = 0;
     elapsed = 0;
   }
