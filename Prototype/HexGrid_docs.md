@@ -156,11 +156,7 @@ gridY1 | `number:Integer`| The starting `HexSpace` y-coordinate of the origin
 gridX2 | `number:Integer`| The `HexSpace` x-coordinate of the destination
 gridY2 | `number:Integer`| The `HexSpace` y-coordinate of the destination
 
-**Returns** `ARRAY[type:HexLite]` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method (see below).
-
-* `gridX`: `number:Integer` - Hex Grid x Coordinate 
-* `gridY`: `number:Integer` - Hex Grid y Coordinate
-* `attributes`: `object` - An object whose enumerable property names are the names of terrain features found on the grid space. Each enumerable property is the `attributes` object assigned to each terrain type found on the grid space. 
+**Returns** `ARRAY[type:HexLite]` Array of the `HexLite` objects representing every `HexSpace` from the origin to the destination (origin, destination]. The `HexLite` objects in the array are as those created by the `HexSpace.createHexLite()` method.
 
 #####Implementation Notes
 Uses a 2-dimensional K-D tree behind the scenes and polls each point along the line from the center of the origin to the center of the destination. It adds every hex space the polled points are within to the array
@@ -172,7 +168,7 @@ Add a citizen to the population of the `HexGrid`. The citizen construct is a way
 
 Arguments | Type    | Notes
 ----------|---------|---------
-`sprite`    | `type:PIXI.Sprite` | Must be a `PIXI.Sprite` object
+`sprite`    | `type:PIXI.Container` | Usually a sprite, but could be a container that contains sprites. This object visually represents the `Citizen` on the grid.
 `name`      | `string` | name with which to register the `Citizen`
 `x`         | `number:Integer` | The starting `HexSpace` x-coordinate of the citizen
 `y`         | `number:Integer` | The starting `HexSpace` y-coordinate of the citizen
@@ -216,7 +212,7 @@ y         | `integer` | The destination `HexSpace` y-coordinate of the citizen
 
 Moves a citizen to the grid space specified by the provided coordinates in the time indicated by the passed time value. You can optionally specify an animation function to execute during the movement.
 
-**Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the citizen will...do something else.
+**Note** This function attempts to occupy a grid space when the citizen arrives. If it is unsuccessful, the citizen will attempt to occupy adjacent hex spaces in a semi-random order starting with the closest adjacent hex spaces and moving outward until it finds a space it can occupy.
 
 **Note** If `time <= 0`, this method behaves as the signature `moveCitizenTo(citizen, x, y)`, meaning neither `animation` nor `endAnimation` will be called
 
@@ -291,7 +287,7 @@ Private class. Not accessible to clients.
 
 ####Constructors
 
-#####`Citizen(sprite, name, extAttributes)
+#####`Citizen(sprite, name, extAttributes)`
 
 Private Class
 
@@ -304,7 +300,7 @@ Arguments | Type | Details
 ####Properties
 
 #####`facing`
-`number:Float`: Number between [0, 2*PI) which indicates the direction the citizen is facing based on its last movement direction.
+`number:Float`: Number between [0, 2*PI) which indicates the direction the citizen is facing based on its last movement direction. Left: 0, down: Math.PI/2, right: Math.PI, up: Math.PI * (3/2)
 
 #####`moving`
 `boolean`: Is the citizen currently moving?

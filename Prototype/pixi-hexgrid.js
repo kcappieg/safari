@@ -708,54 +708,63 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     var lite;
     this.getHexLite = function(){
       if (!lite){
-        lite = {};
-        Object.defineProperty(lite, "x", {
-          value: that.x,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        Object.defineProperty(lite, "y", {
-          value: that.y,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        
-        Object.defineProperty(lite, "gridX", {
-          value: that.gridX,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        Object.defineProperty(lite, "gridY", {
-          value: that.gridY,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        Object.defineProperty(lite, "radius", {
-          value: that.radius,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        Object.defineProperty(lite, "getTerrainFeatures", {
-          value: that.getTerrainFeatures,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
-        Object.defineProperty(lite, "getOccupants", {
-          value: that.getOccupants,
-          writable: false,
-          configurable: false,
-          enumerable: true,
-        });
+        lite = new HexGrid.HexLite(this);
       }
       return lite;
     };
   }
+
+  HexGrid.HexSpaceLite = function (hexSpace) {
+    if (!(hexSpace instanceof HexSpace)) {
+      throw new Error ("HexSpaceLite cannot be constructed from an object that's not a HexSpace");
+    }
+
+    let lite = this;
+
+    Object.defineProperty(lite, "x", {
+      value: hexSpace.x,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(lite, "y", {
+      value: hexSpace.y,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    
+    Object.defineProperty(lite, "gridX", {
+      value: hexSpace.gridX,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(lite, "gridY", {
+      value: hexSpace.gridY,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(lite, "radius", {
+      value: hexSpace.radius,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(lite, "getTerrainFeatures", {
+      value: hexSpace.getTerrainFeatures,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(lite, "getOccupants", {
+      value: hexSpace.getOccupants,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+    });
+  };
 
   function Citizen(sprite, name, extAttributes){
     //instance variables
@@ -1164,8 +1173,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
 
 
     //create wrapper function for the endAnimation argument that occupies the hex grid
-      var ea2 = function(tickerLite, citizen){
-
+      var ea2 = (tickerLite, citizen) => {
         var landingHex = kdTree.nearestNeighbor(citizen.sprite.x, citizen.sprite.y);
         if (originHex){
           if (!landingHex.occupy(c)){

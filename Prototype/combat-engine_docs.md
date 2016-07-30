@@ -86,6 +86,32 @@ Keywords can be based on ENUMS declared as static variables somewhere...
 * Finish
 * Go back to step 1 to reassess
 
+
+##Notes on Actions
+
+* Develop Action "abstract" class with specific subclasses for specific action types
+* Action classes need to provide an implementation for carrying out the action
+* Should have an instance variable for whether or not the action is finished
+* Need to bake in a way for animations to be a part of the action.
+
+###Interruptions during actions
+
+Interruptions need to be delivered via the special "Interrupt" stream.
+
+* Interruptions simulate emergencies / urgent commands rather than suggestions of the next thing to do.
+* Interruptions should be split into different types (enums?) that the character can either follow or ignore
+* The "Interruption Decision" algorithm needs to be configurable.
+* Interruptions are delivered with 3 pieces of information: the type, the sender/initiator, and a function to execute if the character accepts the interruption
+  * Examples of possible uses for the callback are to increase modifiers (similar to a pre-asses message) or alter other pieces of game state as relevant
+* Another use for Interruptions might be to buff a character while they're in the middle of an action. So an interrupt type of "BUFF" should be constructed
+* If the character is not performing an action, the Interruption stream will be fed into the pre-assess message stream.
+
+###Current Tasks
+
+* Finish implementing Action subtypes
+* modify chain callers for Action section of the chain to be aware of the new Action interface
+* Document the Action interface
+
 ##APIs
 
 ###`CombatEngine`
@@ -102,11 +128,11 @@ Class
 
 Main controller for combat engine. Holds references to all combatants. Implements spatial arrangement using `PIXI.HexGrid` extension of `PIXI`.
 
-####Staic Methods
+####Static Methods
 
-#####`registerBattlefieldType(type[, texture][, hexterrains][, gridLines])`
+#####`registerBattlefieldType(type[, texture][, hexTerrains][, gridLines])`
 
-Registers a battlefield type using the `data` object.
+Registers a battlefield type object.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -162,7 +188,7 @@ Initializes a battlefield at the specified dimensions and size. The type determi
 
 Arguments | Type    | Notes
 ----------|---------|---------
-`type` | `string` | Identifier for the type of battlefield to be randomly generated and loaded.
+`type` | `string` | Identifier for the type of battlefield to be loaded. If the type of battlefield registered was passed a `hexTerrains` function, calls that function for each hex grid space to generate the terrain.
 `hexX`      | `number:Integer` | Width in hex spaces
 `hexY`      | `number:Integer` | Height in hex spaces
 `radius`    | `number:Integer` | Radius of each hex space in pixels
@@ -229,6 +255,8 @@ Arguments | Type    | Notes
 #####`initiateCombat(battleField)`
 
 Initiate the combat event loop for a particular battlefield. The battlefield is rendered in the current renderer (`type:PIXI.SystemRenderer`) associated with the `CombatEngine` instance.
+
+**Note** Once combat is initiated, it will continue to use the renderer that it was originally started with whether or not the `CombatEngine`'s renderer is changed.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -378,7 +406,7 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 #####`target`
 
-`ARRAY[type:CombatEngine.Combatant]` **Read-only** The current target or targets for the Combatant.
+`ARRAY[type:CombatEngine.Combatant OR type:HexLite]` **Read-only** The current target or targets for the Combatant. Can be either another `Combatant` or a `HexLite` object representing a location.
 
 ----------------------------
 
@@ -490,28 +518,6 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
-#####`detectionModifiers`
-
-`Map` **Read-Only** The reference to this variable cannot be changed, but the map itself is mutable. Stores modifiers to detecting other characters on the battlefield. Key-value pairs should be names of combatants (strings) as keys and numbers as values.
-
-This map is cleared (using `Map.clear()`) after the assessment stage of the Combatant's decision loop.
-
-----------------------------
-
-#####`influenceModifiers`
-
-`Map` **Read-Only** The reference to this variable cannot be changed, but the map itself is mutable. Stores modifiers to the influence other game characters have on this character. Key-value pairs should be names of combatants (strings) as keys and numbers as values.
-
-This map is cleared (using `Map.clear()`) after the choose-an-action stage of the Combatant's decision loop.
-
-----------------------------
-
-#####`name`
-
-`string` **Read-Only** The name of the combatant that was registered with the CombatEngine. The instance of `CombatEngine` internally sets this to prevent overriding the name of a combatant mistakenly.
-
-----------------------------
-
 ####Methods
 
 #####`registerMessage(message)`
@@ -547,7 +553,7 @@ Arguments | Type    | Notes
 
 =====================================
 
-#####`addToBackback(item)`
+#####`addToBackpack(item)`
 
 Add an item to combatant's backpack.
 
@@ -632,7 +638,7 @@ Arguments | Type    | Notes
 
 ######`finally(fn)`
 
-Takes and sets a function to be called as the last filtering method in the chain. This should reduce the array to a length of either 1 or 0. Function takes array (`enemies`) and filters it. Must return the filtered array.
+Takes and sets a function to be called as the last filtering method in the chain. This should reduce the array to the number of targets the `Combatant` plans to attack (possibly more than one if area attack). Function takes array (`enemies`) and filters it. Must return the filtered array.
 
 Arguments | Type    | Notes
 ----------|---------|---------
