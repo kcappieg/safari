@@ -201,8 +201,7 @@ define(["./pixi-hexgrid"], function(PIXI){
 
   CombatEngine.Combatant = function(){
     let inCombat = false;
-    let inAction = false;
-    let target = null;
+    let currentAction = null;
     let interruptChain = [];
     let preAssessMessageChain = [];
     let assessMessageChain = [];
@@ -211,6 +210,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     let actionMessageChain = [];
     let actionChain = [];
     let finalAction = defaultFinalAction;
+    let animations = {};
 
   //Methods
     this.chainRouter = function(chainType, data){
@@ -235,6 +235,21 @@ define(["./pixi-hexgrid"], function(PIXI){
 
     this.setAssessChain = () => {assessChain = []; return setAssessChainTop(assessChain, (fn) => finalAssessment = fn);};
     this.setActionChain = () => {actionChain = []; return setActionChainTop(actionChain, (fn) => finalAction = fn);};
+
+    this.setAnimation = (type, animation, endAnimation) => {
+      animations[type] = {
+        animation: animation,
+        endAnimation: endAnimation
+      };
+    };
+
+    this.getAnimation = (type, i) => {
+      if (i !== internal){
+        throw new Error ("Private method. Access restricted");
+      }
+
+      return animations[type] || {};
+    };
 
   //read-only properties
     Object.defineProperty(this, "detectionModifiers", {
@@ -344,11 +359,6 @@ define(["./pixi-hexgrid"], function(PIXI){
       get: () => inCombat,
       set: (newVal) => {if (newVal.i === internal){inCombat = newVal.n;} return inCombat;}
     });
-    Object.defineProperty(this, "target", {
-      enumerable: true,
-      get: () => target,
-      set: (newVal) => {if (newVal.i === internal){target = newVal.n;} return target;}
-    });
   };
 
   function setAssessChainTop(ac, finalAssessmentSetter){
@@ -438,17 +448,20 @@ define(["./pixi-hexgrid"], function(PIXI){
     return [enemies[randomEnemy]];
   }
 
-  function actionMessageFinal (data){
-    if (typeof data !== "symbol"){
-      return false;
+  function actionMessageFinal (actionBuilder){
+    if (actionBuilder.ready){
+      return actionBuilder.build();
     } else {
-      return data;
+      return false;
     }
   }
 
-  function defaultFinalAction (action) {
-    var returnedAction = (action === CombatEngine.Combatant.ATTACK && !(this.target[0] instanceof CombatEngine.Combatant)) ? CombatEngine.WAIT : action; 
-    return action;
+  function defaultFinalAction (actionBuilder) {
+    if (actionBuilder.ready) {
+      return actionBuilder.build();
+    } else {
+      return new CombatEngine.WaitAction(0, actionBuilder.actor, actionBuilder.hgm);
+    }
   }
 
 /** Below takes will and influence and outputs a boolean of whether the target is influenced
@@ -491,6 +504,26 @@ define(["./pixi-hexgrid"], function(PIXI){
 
   //result is returned whether or not it is undefined.
     return result;
+  }
+
+/** Message Wrapper - this method wraps messages when it needs to be determined whether or not the message will be listened to using isInfluenced
+ ** @param sender - CombatEngine.Combatant object of the sender
+ */
+  CombatEngine.Combatant.prototype.messageWrapperGenerator = function (sender, messageFunction){
+    return (next, resolve, data) => {
+      let influenceModifier = this.influenceModifiers.get(sender.name);
+      influenceModifier += sender.influence;
+
+      if (this.team !== sender.team) {
+        influenceModifier -= 100;
+      }
+
+      if (isInfluenced(this.willfulness, influenceModifier)) {
+        messageFunction.apply(undefined, arguments);
+      } else {
+        next(data);
+      }
+    }
   }
 
 //invoked in the context of the combatant attempting to detect
@@ -579,17 +612,21 @@ define(["./pixi-hexgrid"], function(PIXI){
  ** @returns action - symbol, one of the action ENUMs on this class
  */
   CombatEngine.Combatant.prototype.chooseAction = function(targets, hgm){
-    let action = new CombatEngine.Action(targets);
+  //initialize Action builder
+    let actionBuilder = CombatEngine.Action.actionBuilder(targets, this, hgm);
 
   //action message chain
-    action = this.chainRouter(CombatEngine.Combatant.ACTIONMESSAGE, action);
+    let action = this.chainRouter(CombatEngine.Combatant.ACTIONMESSAGE, actionBuilder);
 
   //action chain (only if an action wasn't chosen from messages)
     if (!action){
       //putting WAIT as the default action
-      action = this.chainRouter(CombatEngine.Combatant.ACTION, CombatEngine.Action.WAIT);
+      action = this.chainRouter(CombatEngine.Combatant.ACTION, actionBuilder);
     }
 
+    if (!(action instanceof CombatEngine.Action)){
+      throw new Error ("No action was chosen");
+    }
     return action;
   };
 
@@ -602,7 +639,7 @@ define(["./pixi-hexgrid"], function(PIXI){
  **
  */
   CombatEngine.Combatant.prototype.beginAction = function(action, hgm){
-    this.currentAction = action;
+    //Once implemented, find the correct animations to pass to action.start
 
     action.start();
   };
@@ -616,7 +653,7 @@ define(["./pixi-hexgrid"], function(PIXI){
 
 
   CombatEngine.Combatant.prototype.loop = function(hgm){
-    var inAction = this.inAction();
+    let inAction = this.inAction();
 
     if (inAction){
       //determine if any interrupt messages change the action
@@ -635,30 +672,35 @@ define(["./pixi-hexgrid"], function(PIXI){
  **
  */
 
-  CombatEngine.Action = function(actor, hgm, nextAction) {
-    if (!(actor instanceof Combatant) || (nextAction && !(nextAction instanceof CombatEngine.Action))) {
+  CombatEngine.Action = function(nextAction) {
+    if (nextAction && !(nextAction instanceof CombatEngine.Action)) {
       throw new Error("Illegal arguments to Action constructor");
     }
 
     let timer;
     let inProgress = false;
     let interrupted = false;
+    let thisActor = null;
+    let thisHgm = null;
+    let begun = false;
 
-    this.start = function () {
+  //The real implementations of this method should always take an animation to be performed during the action and an end animation
+    this.start = function (actor, hgm) {
+      if (begun === true){
+        throw new Error ("Action already begun. Can't start again");
+      }
+
+      actor.currentAction = this;
+      thisActor = actor;
+      thisHgm = hgm;
+
       timer = new Date();
-    }
+      begun = true;
+    };
     this.elapsed = function (){
       return timer ? new Date() - timer : 0;
-    }
+    };
 
-    Object.defineProperty(this, "actor", {
-      value: actor,
-      enumerable: true,
-    });
-    Object.defineProperty(this, "hgm", {
-      value: hgm,
-      enumerable: true,
-    });
     Object.defineProperty(this, "nextAction", {
       value: nextAction,
       enumerable: true,
@@ -676,17 +718,65 @@ define(["./pixi-hexgrid"], function(PIXI){
     this.interrupted = privateSetter(true);
   };
   CombatEngine.Action.prototype.end = function() {
-    this.inProgress = false;
+    this.inProgress = privateSetter(false);
 
-    if (!this.interrupted){
-      this.actor.currentAction = this.nextAction;
-      this.nextAction.start();
+    if (!this.interrupted && this.nextAction){
+      this.nextAction.start(thisActor, thisHgm);
     }
   };
+
+  //Action ENUMs
+  CombatEngine.Action.AID = Symbol();
+  CombatEngine.Action.ATTACK = Symbol();
+  CombatEngine.Action.DEFEND = Symbol();
+  CombatEngine.Action.MOVE = Symbol();
+  CombatEngine.Action.RETREAT = Symbol();
+  CombatEngine.Action.WAIT = Symbol();
+
+// Static method for CombatEngine.Action class
+  //Needs lookup for action types
+  const actionConstructors = {};
+  actionConstructors[CombatEngine.Action.AID] = CombatEngine.AidAction;
+  actionConstructors[CombatEngine.Action.ATTACK] = CombatEngine.AttackAction;
+  actionConstructors[CombatEngine.Action.DEFEND] = CombatEngine.DefendAction;
+  actionConstructors[CombatEngine.Action.MOVE] = CombatEngine.MoveAction;
+  actionConstructors[CombatEngine.Action.RETREAT] = CombatEngine.RetreatAction;
+  actionConstructors[CombatEngine.Action.WAIT] = CombatEngine.WaitAction;
+  
+  CombatEngine.Action.actionBuilder = function(data) {
+    return {
+      data: data,
+      actionChain: [],
+      prependAction: (type, data) => {
+        this.actionChain.splice(0,0, {type:type, data:data});
+      },
+      appendAction: (type, data) => {
+        this.actionChain.push({type:type, data:data});
+      },
+      build: () => {
+        if (this.actionChain.length === 0){
+          throw new Error ("Cannot build Action object from builder: no actions in the action chain");
+        }
+        
+        let action;
+        for (let i = this.actionChain.length - 1; i >= 0; i--){
+          let nextAction = action ? action : undefined;
+          let cD = this.actionChain[i]; //currentData
+          let c = actionConstructors[cD.type]; //constructor
+
+          action = new c (cD.data, nextAction);
+        }
+
+        return action;
+      },
+      ready: false
+    }
+  };
+
 /** MoveAction class. Inherits from Action. Moves the character using the passed animation function and the hexgrid manager
  **
  */
-  CombatEngine.MoveAction = function(destination, actor, hgm, nextAction) {
+  CombatEngine.MoveAction = function(destination, nextAction) {
     CombatEngine.Action.call(this, actor, hgm, nextAction);
 
   //save super functions
@@ -694,8 +784,12 @@ define(["./pixi-hexgrid"], function(PIXI){
     const superInterruptAction = this.interruptAction;
 
 
-    this.start = function(animation, endAnimation){
+    this.start = function(actor, hgm){
       this.inProgress = privateSetter(true);
+
+      let a = actor.getAnimation(this.actionType, internal);
+      let animation = a.animation;
+      let endAnimation = a.endAnimation;
 
       let thisCitizen = hgm.getCitizen(this.actor.name);
       let origin = thisCitizen.currentHex;
@@ -711,90 +805,78 @@ define(["./pixi-hexgrid"], function(PIXI){
 
       superStart(); //start the clock...
       let movementInterrupt = hgm.moveCitizenTo(this.actor.name, destination.x, destination.y, time, animation, endMovement);
-      this.interruptAction = function() {
+      
+      this.interruptAction = () => {
         superInterruptAction();
         movementInterrupt();
+        delete this.interruptAction; //remove custom function reference so that it falls back to the prototypically inherited method
       };
     };
-  }
+  };
   CombatEngine.MoveAction.prototype = Object.create(CombatEngine.Action.prototype);
   CombatEngine.MoveAction.prototype.constructor = CombatEngine.MoveAction;
+  CombatEngine.MoveAction.actionType = CombatEngine.Action.MOVE;
 
-//need Action types for AID, ATTACK, RETREAT, DEFEND, WAIT
+/** WaitAction class. Inherits from Action. Takes an amount of time to delay and waits for that amount of time.
+ **
+ */
+  CombatEngine.WaitAction = function(delay, nextAction){
+    CombatEngine.Action.call(this, actor, hgm, nextAction);
 
+  //save super functions
+    const superStart = this.start;
 
+    this.start = function(actor, hgm){
+      this.inProgress = privateSetter(true);
 
-//OLD IMPLEMENTATION. Saved for reference until the Action types have been defined
-/*  CombatEngine.Action = function (actionData, action, delay, nextAction) {
-  //Private Final variables
-    const timer = new Date();
+      let a = actor.getAnimation(this.actionType, internal);
+      let animation = a.animation;
+      let endAnimation = a.endAnimation;
 
-  //Private variables
-    let combatantTargets = null; //array of combatant targets. Only for ATTACK or AID
-    let moveTarget = null; //destination hex space. Only for MOVE or RETREAT
-    let changeCondition = null; //function invoked to determine whether or not to end this action. Only for DEFEND
-
-  //Instance variables and their accessors
-    let action = action;
-    let delay = delay || 0; //delay in ms, defaults to 0
-    let nextAction = nextAction;
-
-    Object.defineProperty(this, "action", {
-      get: function(){return action;},
-      set: function(input){
-        if (!action && typeof input === 'symbol'){action = input;}
+      let ticker = hgm.ticker;
+      let tElapsed = 0; //elapsed time in ms as calculated by the ticker. This is so that we can pause the game and keep the integrity of the wait action
+      let waitAnimation = () => {}; //dummy function so that I can consistently remove it
+      let deregisterAnimation;
+      let ender = () => {
+        if (typeof endAnimation === "function"){
+          endAnimation({deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, hgm.getCitizen(actor.name));
+        }
+        this.end();
       }
-    });
-    Object.defineProperty(this, "delay", {
-      get: function(){return delay;}
-    });
-    Object.defineProperty(this, "nextAction", {
-      get: function(){return nextAction;}
-    });
-    Object.defineProperty(this, "actionData", {
-      get: () => {
-        switch (action) {
-          case CombatEngine.Action.ATTACK:
-          case CombatEngine.Action.AID:
-            return combatantTargets;
-            break;
-          case CombatEngine.Action.MOVE:
-          case CombatEngine.Action.RETREAT:
-            return moveTarget;
-            break;
-          case CombatEngine.Action.DEFEND:
-            return changeCondition;
-            break;
-          default:
-            return actionData;
-            break;
+
+      if (typeof animation === "function") {
+        waitAnimation = () => {
+          animation.call(undefined, {deltaTime: ticker.deltaTime, elapsedMS: ticker.elapsedMS}, deregisterAnimation);
+        };
+        deregisterAnimation = () => {
+          ticker.remove(waitAnimation);
+        };
+      }
+
+      let wait = () => {
+        tElapsed += ticker.elapsedMS;
+        if (tElapsed >= delay) {
+          ticker.remove(waitAnimation);
+          ticker.remove(wait);
+          ticker.addOnce(ender);
         }
       }
-    })
 
-  //Instance methods
-    this.elapsed = function(){
-      return new Date() - timer; //returns time elapsed in miliseconds
-    }
+      superStart(actor, hgm);
+      ticker.add(wait);
 
-  //Dynamically discover which kind of action data was passed and set the appropriate field accordingly.
-    if (actionData instanceof HexGrid.HexSpaceLite){
-      moveTarget = actionData;
-    } else if (Array.isArray(actionData)){
-      combatantTargets = actionData;
-    } else if (typeof actionData === "function"){
-      changeCondition = actionData;
-    }
-  }
-*/
+      this.interruptAction = () => {
+        superInterruptAction();
+        ticker.addOnce(ender);
+        delete this.interruptAction;
+      }
+    };
+  };
+  CombatEngine.WaitAction.prototype = Object.create(CombatEngine.Action.prototype);
+  CombatEngine.WaitAction.prototype.constructor = CombatEngine.WaitAction;
+  CombatEngine.WaitAction.actionType = CombatEngine.Action.WAIT;
 
-  //Action ENUMs
-  CombatEngine.Action.AID = Symbol();
-  CombatEngine.Action.ATTACK = Symbol();
-  CombatEngine.Action.DEFEND = Symbol();
-  CombatEngine.Action.MOVE = Symbol();
-  CombatEngine.Action.RETREAT = Symbol();
-  CombatEngine.Action.WAIT = Symbol();
+//need Action types for AID, ATTACK, RETREAT, DEFEND
 
   return CombatEngine;
 });
