@@ -117,7 +117,7 @@ Begins execution of the action. In this abstract class, merely starts a timer wh
 Arguments | Type    | Notes
 ----------|---------|---------
 `actor` | `type:CombatEngine.Combatant` | The combatant who is performing the action
-`hgm` | `type:HexGridManager` | The `HexGridManager` for the battlefield on which the combatant is. This is not accessible to the client
+`hgm` | `type:HexGridManager` | The `HexGridManager` for the battlefield on which the combatant is.
 
 **Returns** void
 
@@ -136,3 +136,5 @@ NONE
 **Returns** `number:Integer` The elapsed time in milliseconds since execution of the action began
 
 =====================================
+
+#Describe Sub-Types here!

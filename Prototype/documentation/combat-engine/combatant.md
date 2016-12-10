@@ -409,9 +409,9 @@ Arguments | Type    | Notes
 
 **Returns** `object` Object has 2 methods, `next()` and `finally()`
 
-######`next(fn)`
+######`then(fn)`
 
-Takes and sets a function to be called on the chain. The function takes a Symbol (an action ENUM) and should choose a different action or pass the existing one through. Must call either `next()` or `resolve()` with the intended action (i.e. `next(CombatEngine.Combatant.DEFEND)` in order to continue or resolve the chain.
+Takes and sets a function to be called on the chain. The function an `actionBuilder` object and must pass that `actionBuilder` object through by calling either `then()` or `resolve()` with the `actionBuilder` object in order to continue or resolve the chain.
 
 Arguments | Type    | Notes
 ----------|---------|---------
@@ -419,7 +419,7 @@ Arguments | Type    | Notes
 
 * `next`: `function` - Function which calls the next behavioral function
 * `resolve`: `function` - Function which calls the final function in the chain, skipping any others not yet called
-* `action`: `symbol` - Action Enum corresponding to the intended action.
+* `actionBuilder`: `object` - Action builder object. Prepend or append actions.
 
 **Returns** `this`
 
@@ -431,7 +431,7 @@ Arguments | Type    | Notes
 ----------|---------|---------
 `fn` | `function` | Function with the below argument signature
 
-* `action`: `symbol` - Action Enum correesponding to the intended action.
+* `actionBuilder`: `object` - Action builder object. Prepend or append actions.
 
 **Returns** void
 

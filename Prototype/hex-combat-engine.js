@@ -149,7 +149,7 @@ define(["./pixi-hexgrid"], function(PIXI){
   }
 
   function addCombatantTop (name, combatant, combatants){
-    if (combatant.constructor !== CombatEngine.Combatant || typeof name !== "string"){
+    if (!(combatant instanceof CombatEngine.Combatant) || typeof name !== "string"){
       throw new Error ("Illegal argument exception");
     }
     if (combatants[name] !== undefined){
@@ -460,7 +460,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     if (actionBuilder.ready) {
       return actionBuilder.build();
     } else {
-      return new CombatEngine.WaitAction(0, actionBuilder.actor, actionBuilder.hgm);
+      return new CombatEngine.WaitAction(0);
     }
   }
 
@@ -520,9 +520,8 @@ define(["./pixi-hexgrid"], function(PIXI){
 
       if (isInfluenced(this.willfulness, influenceModifier)) {
         messageFunction.apply(undefined, arguments);
-      } else {
-        next(data);
       }
+      next(data);
     }
   }
 
@@ -563,7 +562,7 @@ define(["./pixi-hexgrid"], function(PIXI){
       const distance = hgm.distanceBetween(thisHex.gridX, thisHex.gridY, targetHex.gridX, targetHex.gridY);
 
       const currentModifier = this.detectionModifiers.get(c.name) || 0;
-      this.detectionModifiers.set(c.name, currentModifier - Math.floor((distance / radius) * 5 - 50));
+      this.detectionModifiers.set(c.name, currentModifier - Math.floor((distance / radius) * 5 - 100));
     }
   //then: Using modifiers from the map and a random modifier, filter the targets array to only those the Combatant detects, and return the filtered array
     return targets.filter(detectionFilter, this);
@@ -613,7 +612,7 @@ define(["./pixi-hexgrid"], function(PIXI){
  */
   CombatEngine.Combatant.prototype.chooseAction = function(targets, hgm){
   //initialize Action builder
-    let actionBuilder = CombatEngine.Action.actionBuilder(targets, this, hgm);
+    let actionBuilder = CombatEngine.Action.actionBuilder(targets);
 
   //action message chain
     let action = this.chainRouter(CombatEngine.Combatant.ACTIONMESSAGE, actionBuilder);
@@ -641,7 +640,7 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.Combatant.prototype.beginAction = function(action, hgm){
     //Once implemented, find the correct animations to pass to action.start
 
-    action.start();
+    action.start(this, hgm);
   };
 
 /** Method checks the current action and determines whether or not it is still acting.
@@ -701,6 +700,16 @@ define(["./pixi-hexgrid"], function(PIXI){
       return timer ? new Date() - timer : 0;
     };
 
+    this.end = function end(){
+      this.inProgress = privateSetter(false);
+
+      if (!this.interrupted && this.nextAction){
+        this.nextAction.start(thisActor, thisHgm);
+      } else {
+        thisActor.currentAction = null;
+      }
+    };
+
     Object.defineProperty(this, "nextAction", {
       value: nextAction,
       enumerable: true,
@@ -717,13 +726,6 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.Action.prototype.interruptAction = function(){
     this.interrupted = privateSetter(true);
   };
-  CombatEngine.Action.prototype.end = function() {
-    this.inProgress = privateSetter(false);
-
-    if (!this.interrupted && this.nextAction){
-      this.nextAction.start(thisActor, thisHgm);
-    }
-  };
 
   //Action ENUMs
   CombatEngine.Action.AID = Symbol();
@@ -734,34 +736,26 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.Action.WAIT = Symbol();
 
 // Static method for CombatEngine.Action class
-  //Needs lookup for action types
-  const actionConstructors = {};
-  actionConstructors[CombatEngine.Action.AID] = CombatEngine.AidAction;
-  actionConstructors[CombatEngine.Action.ATTACK] = CombatEngine.AttackAction;
-  actionConstructors[CombatEngine.Action.DEFEND] = CombatEngine.DefendAction;
-  actionConstructors[CombatEngine.Action.MOVE] = CombatEngine.MoveAction;
-  actionConstructors[CombatEngine.Action.RETREAT] = CombatEngine.RetreatAction;
-  actionConstructors[CombatEngine.Action.WAIT] = CombatEngine.WaitAction;
-  
   CombatEngine.Action.actionBuilder = function(data) {
-    return {
+    let actionBuild = {
       data: data,
       actionChain: [],
       prependAction: (type, data) => {
-        this.actionChain.splice(0,0, {type:type, data:data});
+        actionBuild.actionChain.splice(0,0, {type:type, data:data});
       },
       appendAction: (type, data) => {
-        this.actionChain.push({type:type, data:data});
+        actionBuild.actionChain.push({type:type, data:data});
       },
       build: () => {
-        if (this.actionChain.length === 0){
+        if (actionBuild.actionChain.length === 0){
           throw new Error ("Cannot build Action object from builder: no actions in the action chain");
         }
         
+      //build the action chain backwards
         let action;
-        for (let i = this.actionChain.length - 1; i >= 0; i--){
+        for (let i = actionBuild.actionChain.length - 1; i >= 0; i--){
           let nextAction = action ? action : undefined;
-          let cD = this.actionChain[i]; //currentData
+          let cD = actionBuild.actionChain[i]; //currentData
           let c = actionConstructors[cD.type]; //constructor
 
           action = new c (cD.data, nextAction);
@@ -771,57 +765,114 @@ define(["./pixi-hexgrid"], function(PIXI){
       },
       ready: false
     }
+    return actionBuild;
   };
 
-/** MoveAction class. Inherits from Action. Moves the character using the passed animation function and the hexgrid manager
- **
+/** MoveAction class. Inherits from Action. Moves the character using the set animation function and the hexgrid manager
+ ** Destination might be a HexSpaceLite or Combatant object
  */
   CombatEngine.MoveAction = function(destination, nextAction) {
-    CombatEngine.Action.call(this, actor, hgm, nextAction);
+
+  //adding a safety valve here. When too many movement actions are chained together, the game units have trouble deregistering. The 'next action' after a move is always a 10 ms rest\
+    nextAction = new CombatEngine.WaitAction(10, nextAction);
+
+    CombatEngine.Action.call(this, nextAction);
 
   //save super functions
     const superStart = this.start;
     const superInterruptAction = this.interruptAction;
 
+    let destinationCombatant = destination instanceof CombatEngine.Combatant ? destination : null;
+    let destinationGrid = destinationCombatant ? null : destination;
 
     this.start = function(actor, hgm){
+
+      let movementInterrupt; //define the interrupt variable;
+      let currentTargX;
+      let currentTargY;
+      let actorCitizen = hgm.getCitizen(actor.name);
+      let targetCitizen = destinationCombatant ? hgm.getCitizen(destinationCombatant.name) : null;
+
       this.inProgress = privateSetter(true);
 
       let a = actor.getAnimation(this.actionType, internal);
       let animation = a.animation;
       let endAnimation = a.endAnimation;
 
-      let thisCitizen = hgm.getCitizen(this.actor.name);
-      let origin = thisCitizen.currentHex;
-
-      let distance = hgm.distanceBetween(origin.gridX, origin.gridY, destination.gridX, destination.gridY);
-      let time = distance / this.speed * 1000;
-
       let endMovement = () => {
+        if (endAnimation) {
+          endAnimation.apply(undefined, arguments);
+        }
         this.end();
-
-        endAnimation.apply(undefined, arguments);
       }
 
-      superStart(); //start the clock...
-      let movementInterrupt = hgm.moveCitizenTo(this.actor.name, destination.x, destination.y, time, animation, endMovement);
-      
       this.interruptAction = () => {
-        superInterruptAction();
+        superInterruptAction.call(this);
         movementInterrupt();
         delete this.interruptAction; //remove custom function reference so that it falls back to the prototypically inherited method
       };
+
+      //if the destination is a combatant, not a hex grid space,
+      //swap the animation function for one that checks the location of the combatant every animation frame
+      if (destinationCombatant){
+        currentTargX = targetCitizen.sprite.position.x;
+        currentTargY = targetCitizen.sprite.position.y;
+        destinationGrid = hgm.hexAt(currentTargX, currentTargY);
+
+        let originalAnimation = animation;
+
+        animation = () => {
+          let newX = targetCitizen.sprite.position.x;
+          let newY = targetCitizen.sprite.position.y;
+          if ((newX !== currentTargX || newY !== currentTargY) && Math.sqrt(Math.pow(newX - currentTargX, 2) + Math.pow(newY - currentTargY, 2)) > hgm.hexRadius){
+            currentTargX = newX;
+            currentTargY = newY;
+            destinationGrid = hgm.hexAt(currentTargX, currentTargY);
+
+            let currentHex = hgm.hexAt(actorCitizen.sprite.position.x, actorCitizen.sprite.position.y);
+
+            let distance = hgm.distanceBetween(currentHex.gridX, currentHex.gridY, destinationGrid.gridX, destinationGrid.gridY);
+          //if they are close enough, end movement now
+            if (distance < hgm.hexRadius / 2){
+              movementInterrupt();
+              this.end();
+              return;
+            }
+
+            let time = distance / actor.speed * 1000;
+
+            movementInterrupt = hgm.moveCitizenTo(actor.name, destinationGrid.gridX, destinationGrid.gridY, time, animation, endMovement);
+            return;
+          }
+
+          originalAnimation && originalAnimation.apply(undefined, arguments);
+        }
+      }
+
+      let origin = actorCitizen.currentHex || hgm.hexAt(actorCitizen.sprite.position.x, actorCitizen.sprite.position.y);
+
+      let distance = hgm.distanceBetween(origin.gridX, origin.gridY, destinationGrid.gridX, destinationGrid.gridY);
+      let time = distance / actor.speed * 1000;
+
+    //if the target is close enough, don't bother trying to move
+      superStart.call(this, actor, hgm); //start the clock...
+      if (distance < hgm.hexRadius / 2){
+        this.end();
+      } else {
+        movementInterrupt = hgm.moveCitizenTo(actor.name, destinationGrid.gridX, destinationGrid.gridY, time, animation, endMovement);
+      }
     };
   };
   CombatEngine.MoveAction.prototype = Object.create(CombatEngine.Action.prototype);
   CombatEngine.MoveAction.prototype.constructor = CombatEngine.MoveAction;
   CombatEngine.MoveAction.actionType = CombatEngine.Action.MOVE;
 
+
 /** WaitAction class. Inherits from Action. Takes an amount of time to delay and waits for that amount of time.
  **
  */
   CombatEngine.WaitAction = function(delay, nextAction){
-    CombatEngine.Action.call(this, actor, hgm, nextAction);
+    CombatEngine.Action.call(this, nextAction);
 
   //save super functions
     const superStart = this.start;
@@ -862,7 +913,7 @@ define(["./pixi-hexgrid"], function(PIXI){
         }
       }
 
-      superStart(actor, hgm);
+      superStart.call(this, actor, hgm);
       ticker.add(wait);
 
       this.interruptAction = () => {
@@ -877,6 +928,15 @@ define(["./pixi-hexgrid"], function(PIXI){
   CombatEngine.WaitAction.actionType = CombatEngine.Action.WAIT;
 
 //need Action types for AID, ATTACK, RETREAT, DEFEND
+
+  //Needs lookup for action types
+  const actionConstructors = {};
+  actionConstructors[CombatEngine.Action.AID] = CombatEngine.AidAction;
+  actionConstructors[CombatEngine.Action.ATTACK] = CombatEngine.AttackAction;
+  actionConstructors[CombatEngine.Action.DEFEND] = CombatEngine.DefendAction;
+  actionConstructors[CombatEngine.Action.MOVE] = CombatEngine.MoveAction;
+  actionConstructors[CombatEngine.Action.RETREAT] = CombatEngine.RetreatAction;
+  actionConstructors[CombatEngine.Action.WAIT] = CombatEngine.WaitAction;
 
   return CombatEngine;
 });

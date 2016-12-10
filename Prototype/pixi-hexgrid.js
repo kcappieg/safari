@@ -7,6 +7,8 @@ author Kevin C. Gall
 
 define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   "use strict";
+  //Define HexGrid object
+  const HexGrid = {};
 
   //UTILITIES
   //below Class is meant to flatten a regular rectangular 2-d grid (where the length of every array is uniform)
@@ -493,7 +495,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       ticker.remove(movingCitizen);
       if (typeof endAnimation === "function" && !stillMoving){
         ticker.addOnce(function(){
-          endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, sprite);
+          endAnimation({deltaTime: this.deltaTime, elapsedMS: this.elapsedMS}, citizen.getCitizenLite());
         }, ticker);
       } else {
         return endAnimation;
@@ -668,8 +670,8 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
         if(!terrainRegister[name]){
           throw new Error ("Terrain not registered! Can't be added to Hex Space");
         }
-        terrainObject = new PIXI.HexGrid.Terrain(name);
-      } else if (typeof name === "object" && name.constructor === PIXI.HexGrid.Terrain){
+        terrainObject = new HexGrid.Terrain(name);
+      } else if (typeof name === "object" && name.constructor === HexGrid.Terrain){
         terrainObject = name;
       } else {
         throw new Error ("Invalid argument passed")
@@ -708,7 +710,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
     var lite;
     this.getHexLite = function(){
       if (!lite){
-        lite = new HexGrid.HexLite(this);
+        lite = new HexGrid.HexSpaceLite(this);
       }
       return lite;
     };
@@ -891,8 +893,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   * HexGrid definition. initializeHexGrid() returns the HexGridManager controller object
   */
 
-  PIXI.HexGrid = {};
-  PIXI.HexGrid.initializeHexGrid = function(hexX, hexY, radius, gridColor, rotate) {
+  HexGrid.initializeHexGrid = function(hexX, hexY, radius, gridColor, rotate) {
     if (hexX < 1 || hexY < 1 || radius <= 0){
       throw new Error ("Dimensions or radius for hex grid not valid");
     }
@@ -1013,26 +1014,26 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       var adjacentHexArray = [];
       var xM=x-1, xP=x+1, yM=y-1, yP=y+1;
       var xMe=xM>=0, xPe=xP<this.dimensions.gridX, yMe=yM>=0, yPe=yP<this.dimensions.gridY;
-      if (xMe){adjacentHexArray.push(hexArray.getAt(xM, y).getHexLite());}
-      if (xPe){adjacentHexArray.push(hexArray.getAt(xP, y).getHexLite());}
-      if (yMe) {adjacentHexArray.push(hexArray.getAt(x, yM).getHexLite());}
-      if (yPe) {adjacentHexArray.push(hexArray.getAt(x, yP).getHexLite());}
+      if (xMe){adjacentHexArray.push(hexArray.getAt(xM, y));}
+      if (xPe){adjacentHexArray.push(hexArray.getAt(xP, y));}
+      if (yMe) {adjacentHexArray.push(hexArray.getAt(x, yM));}
+      if (yPe) {adjacentHexArray.push(hexArray.getAt(x, yP));}
 
       if (!isRotated){
         if (x % 2 === 0 && yPe){
-          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yP).getHexLite());}
-          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yP).getHexLite());}
+          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yP));}
+          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yP));}
         } else if (x % 2 === 1 && yMe){
-          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yM).getHexLite());}
-          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yM).getHexLite());}
+          if (xMe){adjacentHexArray.push(hexArray.getAt(xM, yM));}
+          if (xPe){adjacentHexArray.push(hexArray.getAt(xP, yM));}
         }
       } else {
         if (y % 2 === 0 && xMe){
-          if (yMe){adjacentHexArray.push(hexArray.getAt(xM, yM).getHexLite());}
-          if (yPe){adjacentHexArray.push(hexArray.getAt(xM, yP).getHexLite());}
+          if (yMe){adjacentHexArray.push(hexArray.getAt(xM, yM));}
+          if (yPe){adjacentHexArray.push(hexArray.getAt(xM, yP));}
         } else if (y % 2 === 1 && xPe){
-          if (yMe){adjacentHexArray.push(hexArray.getAt(xP, yM).getHexLite());}
-          if (yPe){adjacentHexArray.push(hexArray.getAt(xP, yP).getHexLite());}
+          if (yMe){adjacentHexArray.push(hexArray.getAt(xP, yM));}
+          if (yPe){adjacentHexArray.push(hexArray.getAt(xP, yP));}
         }
       }
       
@@ -1146,7 +1147,6 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       }
       return success;
     }
-
     hexGridManager.moveCitizenTo = function(name, x, y, time, animation, endAnimation){
       if (x < 0 || x >= hexArray.columns || y < 0 || y >= hexArray.rows){
         throw new Error ("Grid index out of bounds");
@@ -1251,16 +1251,16 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   }
 
   var globalMaxOcc = 2;
-  PIXI.HexGrid.setMaxOccupancy = function(newVal){
+  HexGrid.setMaxOccupancy = function(newVal){
     var n = parseInt(newVal);
     if (n === n){
       globalMaxOcc = n;
     }
 
-    return PIXI.HexGrid;
+    return HexGrid;
   };
 
-  PIXI.HexGrid.Terrain = function(name){
+  HexGrid.Terrain = function(name){
     if (!terrainRegister[name]){
       throw new Error("This terrain type has not been registered");
     }
@@ -1289,7 +1289,7 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
   };
 
   var terrainRegister = {};
-  PIXI.HexGrid.Terrain.registerNewType = function(name, texture, attributes, layer, maxOccupancyModifier){
+  HexGrid.Terrain.registerNewType = function(name, texture, attributes, layer, maxOccupancyModifier){
     if (typeof layer === "number"){
       maxOccupancyModifier = layer;
       layer = "underlay";
@@ -1304,8 +1304,9 @@ define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
       layer: layer,
       maxOccupancyModifier: maxOccupancyModifier
     };
-    return PIXI.HexGrid.Terrain;
+    return HexGrid.Terrain;
   };
 
+  PIXI.HexGrid = HexGrid;
   return PIXI;
 });

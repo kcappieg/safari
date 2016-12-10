@@ -4,10 +4,43 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
   let renderer = PIXI.autoDetectRenderer(800, 800, {backgroundColor: 0xffffff, antialias: true});
   document.body.appendChild(renderer.view);
 
+  PIXI.HexGrid.setMaxOccupancy(4);
+
 //initialize Combat Engine
   let cE = new CE(renderer);
 
 //initialize Combatants
+  
+  dev.flag = false;
+  //define wait action
+  function setWaitAction(next, resolve, actionBuilder){
+    if (!dev.flag){
+      actionBuilder.appendAction(CE.Action.WAIT, 1000);
+      actionBuilder.ready = true;
+      return resolve(actionBuilder);
+    }
+
+    next(actionBuilder);
+  }
+
+  //define setMoveAction function
+  function setMoveAction(next, resolve, actionBuilder){
+    if (actionBuilder.data.length < 1){
+      return next(actionBuilder);
+    }
+
+    actionBuilder.appendAction(CE.Action.MOVE, actionBuilder.data[0]);
+    actionBuilder.ready = true;
+    resolve(actionBuilder);
+  }
+  function setMoveAction2(next, resolve, actionBuilder){
+    let gridX = Math.floor((Math.random() * 15));
+    let gridY = Math.floor((Math.random() * 15));
+
+    actionBuilder.appendAction(CE.Action.MOVE, {gridX:gridX, gridY:gridY});
+    actionBuilder.ready = true;
+    resolve(actionBuilder);
+  }
 
   let bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
   let bowmanTextures = [];
@@ -28,9 +61,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .sprite(bowmanSprite)
     .hp(100)
     .influence(40)
-    .speed(200)
+    .speed(50)
     .build();
 
+  b1.setActionChain()
+    .then(setWaitAction)
+    .then(setMoveAction2);
 
   let bowmanSprite2 = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite2.width = 50;
@@ -43,8 +79,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .sprite(bowmanSprite2)
     .hp(150)
     .willfulness(40)
-    .speed(250)
+    .speed(60)
     .build();
+
+  b2.setActionChain()
+    .then(setWaitAction)
+    .then(setMoveAction2);
 
 
   let bowmanSprite3 = new PIXI.Sprite(bowmanTextures[0]);
@@ -58,8 +98,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .sprite(bowmanSprite3)
     .hp(90)
     .endurance(40)
-    .speed(150)
+    .speed(55)
     .build();
+
+  b3.setActionChain()
+    .then(setWaitAction)
+    .then(setMoveAction);
 
 
   let bowmanSprite4 = new PIXI.Sprite(bowmanTextures[0]);
@@ -73,8 +117,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .sprite(bowmanSprite4)
     .hp(900)
     .marksmanship(60)
-    .speed(350)
+    .speed(40)
     .build();
+
+  b4.setActionChain()
+    .then(setWaitAction)
+    .then(setMoveAction);
 
   cE.addCombatant("bowman1", b1)
     .addCombatant("bowman2", b2)
@@ -149,10 +197,10 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
   });
 
 
-  let bf = cE.initializeBattlefield("default", 10, 10, 30);
-  cE.addCombatantToBattlefield("bowman1", bf, 0, 0)
-    .addCombatantToBattlefield("bowman2", bf, 0, 1)
-    .addCombatantToBattlefield("bowman3", bf, 0, 2)
+  let bf = cE.initializeBattlefield("default", 15, 15, 30);
+  cE.addCombatantToBattlefield("bowman1", bf, 10, 0)
+    .addCombatantToBattlefield("bowman2", bf, 5, 8)
+    .addCombatantToBattlefield("bowman3", bf, 3, 10)
     .addCombatantToBattlefield("bowman4", bf, 0, 3);
 
   let hgm = cE.getBattlefieldHexGridManager(bf);
