@@ -32,7 +32,19 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     actionBuilder.appendAction(CE.Action.MOVE, actionBuilder.data[0]);
     actionBuilder.ready = true;
     resolve(actionBuilder);
+  }  
+
+  function moveAndAttack(next, resolve, actionBuilder){
+    if (actionBuilder.data.length < 1){
+      return next(actionBuilder);
+    }
+
+    actionBuilder.appendAction(CE.Action.MOVE, actionBuilder.data[0]);
+    actionBuilder.appendAction(CE.Action.ATTACK, actionBuilder.data[0]);
+    actionBuilder.ready = true;
+    resolve(actionBuilder);
   }
+
   function setMoveAction2(next, resolve, actionBuilder){
     let gridX = Math.floor((Math.random() * 15));
     let gridY = Math.floor((Math.random() * 15));
@@ -41,6 +53,31 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     actionBuilder.ready = true;
     resolve(actionBuilder);
   }
+
+//attack animation
+  function initializeFireBow(){
+    var elapsed = 0;
+    var frame = 0;
+    var order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, 1, 0];
+
+    return function fireBow(tickerLite, citizen, deregister){
+      elapsed += tickerLite.deltaTime;
+      if (elapsed >= 3){
+        citizen.sprite.texture = bowmanTextures[order[frame]];
+        frame++;
+        elapsed = 0;
+        if (frame === order.length){
+          frame = 0;
+          elapsed = 0;
+          deregister();
+        }
+      }
+    }
+  }
+  
+
+//create the weapon. We'll say sword even though they're bowmen
+  const sword = new CE.Weapon("sword", CE.Weapon.MELEE, 0, [4, 10]);
 
   let bowman = new PIXI.BaseTexture.fromImage("/images/bowman.png");
   let bowmanTextures = [];
@@ -64,9 +101,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .speed(50)
     .build();
 
+  b1.setAnimation(CE.Action.ATTACK, initializeFireBow());
+  b1.setGear(CE.Combatant.WEAPON1, sword);
+
   b1.setActionChain()
     .then(setWaitAction)
-    .then(setMoveAction2);
+    .then(moveAndAttack);
 
   let bowmanSprite2 = new PIXI.Sprite(bowmanTextures[0]);
   bowmanSprite2.width = 50;
@@ -82,9 +122,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .speed(60)
     .build();
 
+  b2.setAnimation(CE.Action.ATTACK, initializeFireBow());
+  b2.setGear(CE.Combatant.WEAPON1, sword);
+
   b2.setActionChain()
     .then(setWaitAction)
-    .then(setMoveAction2);
+    .then(moveAndAttack);
 
 
   let bowmanSprite3 = new PIXI.Sprite(bowmanTextures[0]);
@@ -101,9 +144,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .speed(55)
     .build();
 
+  b3.setAnimation(CE.Action.ATTACK, initializeFireBow());
+  b3.setGear(CE.Combatant.WEAPON1, sword);
+
   b3.setActionChain()
     .then(setWaitAction)
-    .then(setMoveAction);
+    .then(moveAndAttack);
 
 
   let bowmanSprite4 = new PIXI.Sprite(bowmanTextures[0]);
@@ -120,9 +166,12 @@ requirejs(['./pixi-hexgrid', './hex-combat-engine'], function(PIXI, CE){
     .speed(40)
     .build();
 
+  b4.setAnimation(CE.Action.ATTACK, initializeFireBow());
+  b4.setGear(CE.Combatant.WEAPON1, sword);
+
   b4.setActionChain()
     .then(setWaitAction)
-    .then(setMoveAction);
+    .then(moveAndAttack);
 
   cE.addCombatant("bowman1", b1)
     .addCombatant("bowman2", b2)

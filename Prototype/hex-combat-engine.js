@@ -52,8 +52,16 @@ define(["./pixi-hexgrid"], function(PIXI){
       if (go){
         requestAnimationFrame(animate);
 
+        let count = 0;
         for (let name in hgm.combatants) {
+          console.log("looping for "+name);
           hgm.combatants[name].loop(hgm);
+          count++;
+        }
+        if (count === 1){
+          go = false;
+          hgm.ticker.stop();
+          alert("Battle over!");
         }
 
         renderer.render(hgm.grid);
@@ -211,6 +219,7 @@ define(["./pixi-hexgrid"], function(PIXI){
     let actionChain = [];
     let finalAction = defaultFinalAction;
     let animations = {};
+    const gear = new Map();
 
   //Methods
     this.chainRouter = function(chainType, data){
@@ -250,6 +259,27 @@ define(["./pixi-hexgrid"], function(PIXI){
 
       return animations[type] || {};
     };
+
+    this.getGear = function getGear(slot){
+      return gear.get(slot);
+    };
+
+    this.setGear = function setGear(slot, item){
+      switch (slot){
+        case CombatEngine.Combatant.HEAD:
+        case CombatEngine.Combatant.ARMOR:
+        case CombatEngine.Combatant.WEAPON1:
+        case CombatEngine.Combatant.WEAPON2:
+        case CombatEngine.Combatant.FEET:
+          break;
+        default:
+          throw new Error("Not a valid gear slot");
+      }
+
+    //TODO: make checks that item is a correct item type
+    //possibly create individual functions for each gear slot
+      gear.set(slot, item);
+    }
 
   //read-only properties
     Object.defineProperty(this, "detectionModifiers", {
@@ -652,6 +682,13 @@ define(["./pixi-hexgrid"], function(PIXI){
 
 
   CombatEngine.Combatant.prototype.loop = function(hgm){
+  //check for death
+    if (this.currentHP <= 0){
+      hgm.removeCitizen(this.name);
+      delete hgm.combatants[this.name];
+      console.log(this.name, "is dead");
+    }
+
     let inAction = this.inAction();
 
     if (inAction){
@@ -689,6 +726,7 @@ define(["./pixi-hexgrid"], function(PIXI){
         throw new Error ("Action already begun. Can't start again");
       }
 
+      this.inProgress = privateSetter(true);
       actor.currentAction = this;
       thisActor = actor;
       thisHgm = hgm;
@@ -771,7 +809,7 @@ define(["./pixi-hexgrid"], function(PIXI){
 /** MoveAction class. Inherits from Action. Moves the character using the set animation function and the hexgrid manager
  ** Destination might be a HexSpaceLite or Combatant object
  */
-  CombatEngine.MoveAction = function(destination, nextAction) {
+  CombatEngine.MoveAction = function MoveAction(destination, nextAction) {
 
   //adding a safety valve here. When too many movement actions are chained together, the game units have trouble deregistering. The 'next action' after a move is always a 10 ms rest\
     nextAction = new CombatEngine.WaitAction(10, nextAction);
@@ -792,8 +830,6 @@ define(["./pixi-hexgrid"], function(PIXI){
       let currentTargY;
       let actorCitizen = hgm.getCitizen(actor.name);
       let targetCitizen = destinationCombatant ? hgm.getCitizen(destinationCombatant.name) : null;
-
-      this.inProgress = privateSetter(true);
 
       let a = actor.getAnimation(this.actionType, internal);
       let animation = a.animation;
@@ -835,7 +871,6 @@ define(["./pixi-hexgrid"], function(PIXI){
           //if they are close enough, end movement now
             if (distance < hgm.hexRadius / 2){
               movementInterrupt();
-              this.end();
               return;
             }
 
@@ -865,21 +900,19 @@ define(["./pixi-hexgrid"], function(PIXI){
   };
   CombatEngine.MoveAction.prototype = Object.create(CombatEngine.Action.prototype);
   CombatEngine.MoveAction.prototype.constructor = CombatEngine.MoveAction;
-  CombatEngine.MoveAction.actionType = CombatEngine.Action.MOVE;
+  CombatEngine.MoveAction.prototype.actionType = CombatEngine.Action.MOVE;
 
 
 /** WaitAction class. Inherits from Action. Takes an amount of time to delay and waits for that amount of time.
  **
  */
-  CombatEngine.WaitAction = function(delay, nextAction){
+  CombatEngine.WaitAction = function WaitAction(delay, nextAction){
     CombatEngine.Action.call(this, nextAction);
 
   //save super functions
     const superStart = this.start;
 
     this.start = function(actor, hgm){
-      this.inProgress = privateSetter(true);
-
       let a = actor.getAnimation(this.actionType, internal);
       let animation = a.animation;
       let endAnimation = a.endAnimation;
@@ -925,7 +958,103 @@ define(["./pixi-hexgrid"], function(PIXI){
   };
   CombatEngine.WaitAction.prototype = Object.create(CombatEngine.Action.prototype);
   CombatEngine.WaitAction.prototype.constructor = CombatEngine.WaitAction;
-  CombatEngine.WaitAction.actionType = CombatEngine.Action.WAIT;
+  CombatEngine.WaitAction.prototype.actionType = CombatEngine.Action.WAIT;
+  
+
+/** AttackAction class. Inherits from Action. Takes a target and attempts to attack the target.
+ ** If the target is out of range of the primary weapon of the actor, this action fails immediately
+ */
+  CombatEngine.AttackAction = function AttackAction(target, nextAction){
+    //check target argument
+    if (!(target instanceof CombatEngine.Combatant)){
+      throw new Error ("Illegal argument: AttackAction must be passed a Combatant target");
+    }
+
+    //call the action constructor
+    CombatEngine.Action.call(this, nextAction);
+
+    //save super functions
+    const superStart = this.start;
+    const superInterruptAction = this.interruptAction;
+
+    this.start = function(actor, hgm){
+      const weapon = actor.getGear(CombatEngine.Combatant.WEAPON1);
+
+      superStart.call(this, actor, hgm);
+      //check to see if this action can be performed
+      if (actor === target || !weapon || isNotInRange(hgm, actor, target, weapon.range) || target.currentHP <= 0){
+        return this.end();
+      }
+
+      let a = actor.getAnimation(this.actionType, internal);
+      let animation = a.animation;
+      let endAnimation = a.endAnimation;
+      let thisCitizen = hgm.getCitizen(actor.name);
+
+      let endAnimationWrapper = () => {
+        hgm.ticker.remove(animationWrapper);
+        if (endAnimation){
+          hgm.ticker.addOnce(() => endAnimation({deltaTime: hgm.ticker.deltaTime, elapsedMS: hgm.ticker.elapsedMS}, thisCitizen));
+        }
+
+        this.end();
+      };
+      let time = 0;
+      let animationWrapper = () => {
+        if (animation){
+          animation.call(undefined,
+            {deltaTime: hgm.ticker.deltaTime, elapsedMS: hgm.ticker.elapsedMS},
+            thisCitizen,
+            endAnimationWrapper
+          );
+        } else {
+        //if no animation is provided, default the attack time to 1s
+          time += hgm.ticker.deltaTime;
+          if (time >= 1000){
+            endAnimationWrapper();
+          }
+        }
+      };
+
+      this.interruptAction = () => {
+        superInterruptAction();
+        endAnimationWrapper();
+        delete this.interruptAction();
+      }
+
+    //attack is performed and resolved now, despite how long it takes the animation to execute
+      attack(actor, target);
+
+      hgm.ticker.add(animationWrapper);
+    }
+  }
+  CombatEngine.AttackAction.prototype = Object.create(CombatEngine.Action.prototype);
+  CombatEngine.AttackAction.prototype.constructor = CombatEngine.AttackAction;
+  CombatEngine.AttackAction.prototype.actionType = CombatEngine.Action.ATTACK;
+
+//helper methods for AttackAction
+  function attack(attacker, target){
+    console.log(attacker.name,"attacking",target.name);
+    let attackBonus = attacker.strength;
+    attackBonus += Math.ceil(Math.random() * 20);
+    if (attackBonus > target.defense) {
+      target.currentHP -= calculateDamage(attacker.getGear(CombatEngine.Combatant.WEAPON1));
+    }
+  }
+
+  function calculateDamage(weapon){
+    let variable = weapon.damageRange[1] - weapon.damageRange[0];
+
+    return weapon.damageRange[0] + Math.floor(Math.random() * variable);
+  }
+
+  function isNotInRange(hgm, actor, target, range){
+    let actorHex = hgm.hexAt(actor.sprite.x, actor.sprite.y);
+    let targetHex = hgm.hexAt(target.sprite.x, target.sprite.y);
+    let dist = hgm.distanceBetween(actorHex.gridX, actorHex.gridY, targetHex.gridX, targetHex.gridY);
+
+    return dist < range;
+  }
 
 //need Action types for AID, ATTACK, RETREAT, DEFEND
 
@@ -937,6 +1066,68 @@ define(["./pixi-hexgrid"], function(PIXI){
   actionConstructors[CombatEngine.Action.MOVE] = CombatEngine.MoveAction;
   actionConstructors[CombatEngine.Action.RETREAT] = CombatEngine.RetreatAction;
   actionConstructors[CombatEngine.Action.WAIT] = CombatEngine.WaitAction;
+
+//Items!
+/** Abstract Item class
+ **
+ */
+  class Item{
+    constructor(name){
+      Object.defineProperty(this, "name", {
+        value: name,
+        enumerable: true
+      })
+    }
+  }
+
+/** Weapon class - extends Item and meant to attack enemies
+ **
+ */
+  class Weapon extends Item {
+    constructor(name, type, range, damageRange) {
+    //check arguments
+      switch(type){
+        case CombatEngine.Weapon.RANGED:
+        case CombatEngine.Weapon.MELEE:
+          break;
+        default:
+          throw new Error("Invalid Weapon type");
+      }
+
+      range = parseInt(range);
+      if (range !== range){
+        throw new Error("Not a valid range");
+      }
+
+      if (!Array.isArray(damageRange)){
+        throw new Error("Damage range must be array of 2 numbers: minimum damage, and maximum damage");
+      }
+
+      super(name);
+
+
+      Object.defineProperty(this, "type", {
+        value: type,
+        enumerable: true
+      });
+      Object.defineProperty(this, "range", {
+        value: range,
+        enumerable: true
+      });
+      Object.defineProperty(this, "damageRange", {
+        value: damageRange,
+        enumerable: true
+      });
+    }
+  }
+
+  CombatEngine.Weapon = Weapon;
+
+/** Weapon Enums - Different types of weapons
+ ** For Prototype, limit to RANGED and MELEE
+ */
+  CombatEngine.Weapon.RANGED = Symbol(); //
+  CombatEngine.Weapon.MELEE = Symbol();
 
   return CombatEngine;
 });

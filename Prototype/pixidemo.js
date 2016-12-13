@@ -63,7 +63,7 @@ requirejs(['./pixi-hexgrid'], function(PIXI){
       if (frame === order.length){
         frame = 0;
         elapsed = 0;
-        //deregister();
+        deregister();
       }
     }
   }

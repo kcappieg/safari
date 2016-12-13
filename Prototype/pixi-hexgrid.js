@@ -5,7 +5,7 @@ HexGrid
 author Kevin C. Gall
 ******************************/
 
-define(["./node_modules/pixi.js/bin/pixi"], function(PIXI){
+define(["./node_modules/pixi.js/dist/pixi"], function(PIXI){
   "use strict";
   //Define HexGrid object
   const HexGrid = {};

@@ -83,12 +83,6 @@ None. Uses Builder Pattern (see `combatantBuilder` above)
 
 ----------------------------
 
-#####`target`
-
-`ARRAY[type:CombatEngine.Combatant OR type:HexLite]` **Read-only** The current target or targets for the Combatant. Can be either another `Combatant` or a `HexLite` object representing a location.
-
-----------------------------
-
 #####`sprite`
 
 `type:PIXI.DisplayContainer` **Read-only** The display container object (usually a sprite) associated with this combatant.
